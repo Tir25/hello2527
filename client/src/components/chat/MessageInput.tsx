@@ -49,7 +49,7 @@ export const MessageInput = ({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="sticky bottom-0 z-40 backdrop-blur-xl bg-white/70 border-t border-white/20 p-4"
+      className="sticky bottom-0 z-40 backdrop-blur-xl bg-white/70 border-t border-white/20 p-4 safe-bottom"
     >
       <div className="flex items-end gap-3 max-w-4xl mx-auto">
         {/* Text Input */}

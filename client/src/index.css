@@ -126,3 +126,8 @@ body {
 .messages-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(147, 51, 234, 0.4);
 }
+
+/* Safe area utility for bottom insets (mobile navigation bars, notches, etc.) */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
