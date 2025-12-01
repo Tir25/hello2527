@@ -51,6 +51,20 @@ export const ChatWindow = () => {
     }
   }, [messages])
 
+  // Ensure messages stay scrolled to bottom on viewport resize (e.g., mobile keyboard)
+  useEffect(() => {
+    const handleResize = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
   const handleSendMessage = async (content: string) => {
     if (!selectedUser || !user?.id) return
 
@@ -72,7 +86,7 @@ export const ChatWindow = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex flex-col h-[100dvh] md:h-full overflow-hidden">
       {/* Chat Header */}
       <ChatHeader 
         selectedUser={selectedUser} 
