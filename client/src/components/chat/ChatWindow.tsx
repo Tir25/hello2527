@@ -97,7 +97,7 @@ export const ChatWindow = () => {
       {/* Messages List */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-2 py-4 messages-scroll"
+        className="flex-1 overflow-y-auto px-2 py-4 pb-28 md:pb-4 messages-scroll"
         style={{
           scrollBehavior: 'smooth',
         }}
