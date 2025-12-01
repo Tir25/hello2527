@@ -13,6 +13,29 @@ export default defineConfig({
     server: {
         port: 3000,
         open: true,
+        // Proxy Supabase requests to fix cookie domain issues
+        // This routes all Supabase requests through the dev server,
+        // making them appear to come from localhost and preventing
+        // the __cf_bm cookie domain mismatch error
+        proxy: {
+            '/supabase': {
+                target: 'https://ckuxuusctkmuwmeqnwxw.supabase.co',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/supabase/, ''),
+                secure: true,
+                configure: (proxy, _options) => {
+                    proxy.on('error', (err, _req, _res) => {
+                        console.error('Proxy error:', err)
+                    })
+                    proxy.on('proxyReq', (proxyReq, req, _res) => {
+                        // Preserve original host header for proper routing
+                        if (req.headers.host) {
+                            proxyReq.setHeader('host', 'ckuxuusctkmuwmeqnwxw.supabase.co')
+                        }
+                    })
+                },
+            },
+        },
     },
     build: {
         // Optimize build performance

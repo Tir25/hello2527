@@ -1,73 +1,91 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { ArrowLeft, Save } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { motion } from 'framer-motion'
-import { User, Mail, Phone, Edit2, Save, X, Camera } from 'lucide-react'
 import { z } from 'zod'
 import { useAuthStore } from '@/store/authStore'
 import { profileService, type Profile } from '@/lib/services/profile.service'
 import { logger } from '@/lib/logger'
+import { toast } from '@/store/toastStore'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
+import { AvatarUpload } from '@/components/profile/AvatarUpload'
 
 const profileSchema = z.object({
-  full_name: z.string().min(1, 'Full name is required'),
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  phone: z.string().min(10, 'Phone number must be at least 10 characters'),
-  status: z.string().max(100, 'Status must be less than 100 characters'),
+  full_name: z.string().min(1, 'Full name is required').max(100, 'Full name must be less than 100 characters'),
+  status: z.string().max(100, 'Status must be less than 100 characters').optional(),
 })
 
 type ProfileFormData = z.infer<typeof profileSchema>
 
 export const ProfilePage = () => {
-  const { user } = useAuthStore()
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const navigate = useNavigate()
+  const { user, setProfile } = useAuthStore()
+  const [profile, setLocalProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [statusLength, setStatusLength] = useState(0)
+  const uploadAbortControllerRef = useRef<globalThis.AbortController | null>(null)
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
   })
+
+  // Watch status field for character counter
+  const statusValue = watch('status') || ''
 
   const loadProfile = useCallback(async () => {
     if (!user?.id) return
 
     try {
       setLoading(true)
-      setError(null)
-      const result = await profileService.getProfile(user.id)
+      const result = await profileService.getProfile(user.id, true) // Skip cache to get fresh data
 
       if (!result.success) {
-        setError(result.error || 'Failed to load profile')
+        toast.error(result.error || 'Failed to load profile')
         logger.error('ProfilePage:loadProfile', 'Failed to load profile', result.error)
         return
       }
 
       if (result.data) {
-        setProfile(result.data)
-        reset({
-          full_name: result.data.full_name || '',
-          username: result.data.username || '',
-          phone: result.data.phone || '',
-          status: result.data.status || '',
-        })
+        setLocalProfile(result.data)
       }
     } catch (err) {
       logger.error('ProfilePage:loadProfile', 'Unexpected error loading profile', err)
-      setError('An unexpected error occurred')
+      toast.error('An unexpected error occurred')
     } finally {
       setLoading(false)
     }
-  }, [user?.id, reset])
+  }, [user?.id])
+
+  // Separate effect to reset form when profile changes
+  // Use ref to track if we've already reset to prevent infinite loops
+  const resetRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (profile && resetRef.current !== profile.id) {
+      const status = profile.status || ''
+      setStatusLength(status.length)
+      reset({
+        full_name: profile.full_name || '',
+        status: status,
+      })
+      resetRef.current = profile.id
+    }
+  }, [profile, reset])
+
+  // Update character counter when status value changes
+  useEffect(() => {
+    setStatusLength(statusValue.length)
+  }, [statusValue])
 
   useEffect(() => {
     if (user?.id) {
@@ -76,69 +94,115 @@ export const ProfilePage = () => {
   }, [user?.id, loadProfile])
 
   const onSubmit = async (data: ProfileFormData) => {
-    if (!user?.id) return
+    if (!user?.id) {
+      toast.error('Session expired. Please log in again.')
+      navigate('/login')
+      return
+    }
 
     try {
       setSaving(true)
-      setError(null)
-      setSuccess(null)
 
-      const result = await profileService.updateProfile(user.id, data)
+      const result = await profileService.updateProfile(user.id, {
+        full_name: data.full_name,
+        status: data.status || undefined,
+      })
 
       if (!result.success) {
-        setError(result.error || 'Failed to update profile')
+        toast.error(result.error || 'Failed to update profile')
         logger.error('ProfilePage:onSubmit', 'Failed to update profile', result.error)
         return
       }
 
       if (result.data) {
+        setLocalProfile(result.data)
+        // Update global auth store
         setProfile(result.data)
-        setIsEditing(false)
-        setSuccess('Profile updated successfully!')
+        toast.success('Profile updated successfully!')
         logger.info('ProfilePage:onSubmit', 'Profile updated successfully')
-
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccess(null), 3000)
       }
     } catch (err) {
       logger.error('ProfilePage:onSubmit', 'Unexpected error updating profile', err)
-      setError('An unexpected error occurred')
+      toast.error('An unexpected error occurred')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file || !user?.id) return
+  const handleAvatarUpload = async (file: File) => {
+    if (!user?.id) {
+      toast.error('Session expired. Please log in again.')
+      navigate('/login')
+      return
+    }
+
+    // Cancel previous upload if still running
+    if (uploadAbortControllerRef.current) {
+      uploadAbortControllerRef.current.abort()
+      logger.info('ProfilePage:handleAvatarUpload', 'Cancelled previous upload')
+    }
+
+    // Create new abort controller for this upload
+    const abortController = new globalThis.AbortController()
+    uploadAbortControllerRef.current = abortController
 
     try {
       setUploading(true)
-      setError(null)
-      setSuccess(null)
 
-      const result = await profileService.uploadAvatar(user.id, file)
+      const result = await profileService.uploadAvatar(user.id, file, abortController.signal)
+
+      // Check if upload was aborted
+      if (abortController.signal.aborted) {
+        logger.info('ProfilePage:handleAvatarUpload', 'Upload was aborted')
+        return
+      }
 
       if (!result.success) {
-        setError(result.error || 'Failed to upload avatar')
+        toast.error(result.error || 'Failed to upload avatar')
         logger.error('ProfilePage:handleAvatarUpload', 'Failed to upload avatar', result.error)
         return
       }
 
-      // Reload profile to get updated avatar URL
-      await loadProfile()
-      setSuccess('Avatar updated successfully!')
-      logger.info('ProfilePage:handleAvatarUpload', 'Avatar uploaded successfully')
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(null), 3000)
+      // The service already updates the cache, but we need to refresh local state
+      // Fetch fresh profile to ensure we have the latest data
+      const profileResult = await profileService.getProfile(user.id, true)
+      if (profileResult.success && profileResult.data) {
+        setLocalProfile(profileResult.data)
+        setProfile(profileResult.data) // Update global auth store
+        resetRef.current = profileResult.data.id // Update reset ref
+        toast.success('Avatar updated successfully!')
+        logger.info('ProfilePage:handleAvatarUpload', 'Avatar uploaded successfully')
+      } else {
+        // Even if fetch fails, the avatar was uploaded successfully
+        // The cache should have been updated by the service
+        toast.success('Avatar uploaded successfully!')
+        logger.warn('ProfilePage:handleAvatarUpload', 'Avatar uploaded but profile fetch failed, cache may be stale')
+      }
     } catch (err) {
+      // Check if error is due to abort
+      if (err instanceof Error && err.name === 'AbortError') {
+        logger.info('ProfilePage:handleAvatarUpload', 'Upload was aborted')
+        return
+      }
       logger.error('ProfilePage:handleAvatarUpload', 'Unexpected error uploading avatar', err)
-      setError('An unexpected error occurred')
+      toast.error('An unexpected error occurred')
     } finally {
-      setUploading(false)
+      // Only clear uploading state if this is still the active upload
+      if (uploadAbortControllerRef.current === abortController) {
+        setUploading(false)
+        uploadAbortControllerRef.current = null
+      }
     }
   }
+
+  // Cleanup: Cancel upload if component unmounts
+  useEffect(() => {
+    return () => {
+      if (uploadAbortControllerRef.current) {
+        uploadAbortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -160,175 +224,122 @@ export const ProfilePage = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto"
-    >
-      <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-6 sm:p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-white">Profile Settings</h1>
-          {!isEditing && (
-            <Button
-              variant="secondary"
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2"
-            >
-              <Edit2 size={18} />
-              Edit
-            </Button>
-          )}
-        </div>
-
-        {/* Success/Error Messages */}
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 rounded-xl bg-green-500/20 border border-green-400/50 text-green-200 text-sm"
-          >
-            {success}
-          </motion.div>
-        )}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-400/50 text-red-200 text-sm"
-          >
-            {error}
-          </motion.div>
-        )}
-
-        {/* Avatar Section */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="relative">
-            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center overflow-hidden border-4 border-white/20">
-              {profile.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User size={64} className="text-white/60" />
-              )}
-            </div>
-            {isEditing && (
-              <label className="absolute bottom-0 right-0 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full p-2 cursor-pointer transition-colors">
-                <Camera size={20} />
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                  disabled={uploading}
-                />
-              </label>
-            )}
-          </div>
-          {uploading && (
-            <p className="mt-2 text-white/60 text-sm">Uploading avatar...</p>
-          )}
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <Input
-            id="email"
-            type="email"
-            label="Email"
-            value={profile.email}
-            icon={Mail}
-            iconPosition="left"
-            disabled
-            className="opacity-60"
-          />
-
-          <Input
-            id="full_name"
-            type="text"
-            label="Full Name"
-            placeholder="Enter your full name"
-            icon={User}
-            iconPosition="left"
-            error={errors.full_name?.message}
-            disabled={!isEditing}
-            {...register('full_name')}
-          />
-
-          <Input
-            id="username"
-            type="text"
-            label="Username"
-            placeholder="Enter your username"
-            icon={User}
-            iconPosition="left"
-            error={errors.username?.message}
-            disabled={!isEditing}
-            {...register('username')}
-          />
-
-          <Input
-            id="phone"
-            type="tel"
-            label="Phone Number"
-            placeholder="Enter your phone number"
-            icon={Phone}
-            iconPosition="left"
-            error={errors.phone?.message}
-            disabled={!isEditing}
-            {...register('phone')}
-          />
-
-          <div>
-            <label className="block text-white/80 text-sm font-medium mb-2">
-              Status
-            </label>
-            <textarea
-              id="status"
-              placeholder="What's on your mind?"
-              disabled={!isEditing}
-              maxLength={100}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
-              rows={3}
-              {...register('status')}
-            />
-            {errors.status && (
-              <p className="mt-1 text-red-400 text-sm">{errors.status.message}</p>
-            )}
-          </div>
-
-          {isEditing && (
-            <div className="flex gap-4 pt-4">
-              <Button
-                type="submit"
-                variant="primary"
-                isLoading={saving}
-                className="flex-1 flex items-center justify-center gap-2"
-              >
-                <Save size={18} />
-                Save Changes
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setIsEditing(false)
-                  reset()
-                  setError(null)
-                }}
-                className="flex items-center gap-2"
-              >
-                <X size={18} />
-                Cancel
-              </Button>
-            </div>
-          )}
-        </form>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Liquid Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-900 via-purple-900 to-cyan-900">
+        <div className="absolute inset-0 bg-white/5 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent)]" />
       </div>
-    </motion.div>
+
+      {/* Floating Blobs Animation */}
+      <motion.div
+        className="absolute top-20 left-10 w-72 h-72 bg-purple-500/30 rounded-full blur-3xl"
+        animate={{
+          x: [0, 100, 0],
+          y: [0, 50, 0],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+      />
+      <motion.div
+        className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-500/30 rounded-full blur-3xl"
+        animate={{
+          x: [0, -80, 0],
+          y: [0, -60, 0],
+          scale: [1, 1.3, 1],
+        }}
+        transition={{
+          duration: 25,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+      />
+
+      {/* Glass Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10 w-full max-w-2xl"
+      >
+        <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-6 sm:p-8">
+          {/* Header with Back Button */}
+          <div className="flex items-center gap-4 mb-8">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => navigate('/')}
+              className="p-2 rounded-full hover:bg-white/20 transition-colors"
+              aria-label="Back to chat"
+            >
+              <ArrowLeft size={24} className="text-white" />
+            </motion.button>
+            <h1 className="text-3xl font-bold text-white">Edit Profile</h1>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Avatar Upload */}
+            <div className="flex justify-center mb-6">
+              <AvatarUpload
+                avatarUrl={profile.avatar_url}
+                onFileSelect={handleAvatarUpload}
+                uploading={uploading}
+              />
+            </div>
+
+            {/* Full Name Input */}
+            <Input
+              id="full_name"
+              type="text"
+              label="Display Name"
+              placeholder="Enter your display name"
+              error={errors.full_name?.message}
+              {...register('full_name')}
+            />
+
+            {/* Status/Bio Textarea */}
+            <div>
+              <label
+                htmlFor="status"
+                className="block text-sm font-medium text-white/90 mb-2"
+              >
+                About / Status
+              </label>
+              <textarea
+                id="status"
+                placeholder="Tell us about yourself..."
+                maxLength={100}
+                rows={4}
+                className="w-full px-4 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 transition-all duration-300 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                {...register('status')}
+              />
+              <div className="flex items-center justify-between mt-1.5">
+                {errors.status && (
+                  <p className="text-sm text-red-300 font-medium">
+                    {errors.status.message}
+                  </p>
+                )}
+                <p className="text-xs text-white/60 ml-auto">
+                  {statusLength}/100 characters
+                </p>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={saving}
+              className="w-full flex items-center justify-center gap-2 py-4 text-lg"
+            >
+              <Save size={20} />
+              Save Changes
+            </Button>
+          </form>
+        </div>
+      </motion.div>
+    </div>
   )
 }
-

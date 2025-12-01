@@ -84,7 +84,18 @@ export const useAuth = () => {
       const result = await authService.logout()
 
       if (!result.success) {
-        setError(result.error || 'Failed to sign out')
+        const message = result.error || 'Failed to sign out'
+
+        // Firefox sometimes reports "Auth session missing!" even though we want to
+        // treat the user as logged out on the client. In that case, clear client
+        // auth state and treat this as a soft-success so navigation can proceed.
+        if (message.includes('Auth session missing')) {
+          logger.warn('useAuth:logout', 'Session already missing, clearing client auth state')
+          clearAuth()
+          return { success: true }
+        }
+
+        setError(message)
         logger.error('useAuth:logout', 'Logout failed', result.error)
         return { success: false, error: result.error }
       }

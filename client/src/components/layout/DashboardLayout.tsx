@@ -1,37 +1,15 @@
-import React, { type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { LogOut, User, MessageSquare } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
+import { User, MessageSquare } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { logger } from '@/lib/logger'
-import Button from '@/components/ui/Button'
 
 interface DashboardLayoutProps {
   children: ReactNode
 }
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const navigate = useNavigate()
-  const { logout } = useAuth()
-  const { user, loading } = useAuthStore()
-
-  const handleLogout = async () => {
-    try {
-      const result = await logout()
-      if (result.success) {
-        logger.info('DashboardLayout:handleLogout', 'Logout successful')
-        navigate('/login')
-      } else {
-        logger.error('DashboardLayout:handleLogout', 'Logout failed', result.error)
-        // Still navigate to login even if logout fails
-        navigate('/login')
-      }
-    } catch (error) {
-      logger.error('DashboardLayout:handleLogout', 'Unexpected logout error', error)
-      navigate('/login')
-    }
-  }
+  const { loading } = useAuthStore()
 
   if (loading) {
     return (
@@ -92,23 +70,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </div>
 
             {/* User Menu */}
-            <div className="flex items-center gap-4">
-              {/* User Email */}
-              <span className="hidden sm:block text-gray-600 text-sm">
-                {user?.email}
-              </span>
-
-              {/* Logout Button */}
-              <Button
-                variant="ghost"
-                onClick={handleLogout}
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-white/50"
-                aria-label="Log out of your account"
-              >
-                <LogOut size={18} />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            </div>
+            <div className="flex items-center gap-4" />
           </div>
         </div>
       </nav>

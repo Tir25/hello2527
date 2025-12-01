@@ -4,7 +4,8 @@ import { useAuthListener } from './hooks/useAuthListener'
 import { ProtectedRoute, PublicRoute } from './components/routing'
 import { DashboardLayout } from './components/layout'
 import { ChatLayout } from './pages/chat'
-import { WelcomeScreen } from './components/chat'
+import { ChatWindow } from './components/chat'
+import { ToastContainer } from './components/ui/Toast'
 import LoginPage from './app/(auth)/login/page'
 import SignupPage from './app/(auth)/signup/page'
 import { DashboardPage } from './pages/dashboard'
@@ -18,9 +19,12 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <Router>
-      <AuthWrapper>
-        <Routes>
+    <>
+      {/* Global Toast Notification Container - Must be outside Router for global access */}
+      <ToastContainer />
+      <Router>
+        <AuthWrapper>
+          <Routes>
           {/* Public routes - redirect to dashboard if logged in */}
           <Route
             path="/login"
@@ -46,7 +50,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <ChatLayout>
-                  <WelcomeScreen />
+                  <ChatWindow />
                 </ChatLayout>
               </ProtectedRoute>
             }
@@ -65,18 +69,17 @@ function App() {
             path="/profile"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <ProfilePage />
-                </DashboardLayout>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />
 
           {/* Catch all - redirect to root */}
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthWrapper>
-    </Router>
+          </Routes>
+        </AuthWrapper>
+      </Router>
+    </>
   )
 }
 

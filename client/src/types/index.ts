@@ -19,6 +19,16 @@ export interface Message {
     type: 'text' | 'image' | 'file'
 }
 
+// Database message interface matching Supabase messages table schema
+export interface DatabaseMessage {
+    id: string
+    sender_id: string
+    receiver_id: string
+    content: string
+    created_at: string
+    is_read: boolean
+}
+
 export interface ChatRoom {
     id: string
     name?: string

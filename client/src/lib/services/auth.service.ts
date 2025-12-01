@@ -146,10 +146,21 @@ export const authService = {
       const { error } = await supabase.auth.signOut()
 
       if (error) {
+        const message = error.message || 'Failed to sign out'
+
+        // In some browsers (notably Firefox), Supabase can report
+        // "Auth session missing!" even though the user is effectively
+        // already signed out. Treat this as a soft-success so the UI
+        // can still clear auth state and redirect.
+        if (message.includes('Auth session missing')) {
+          logger.warn('auth:logout', 'Auth session already missing, treating as signed out', error)
+          return { success: true }
+        }
+
         logger.error('auth:logout', 'Failed to sign out', error)
         return {
           success: false,
-          error: error.message || 'Failed to sign out',
+          error: message,
         }
       }
 

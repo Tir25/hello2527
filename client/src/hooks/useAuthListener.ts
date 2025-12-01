@@ -17,13 +17,17 @@ export const useAuthListener = () => {
   } = useAuthStore()
 
   useEffect(() => {
+    // Track if initial session has been loaded to prevent duplicate profile fetches
+    let initialSessionLoaded = false
+    let initialUserId: string | null = null
+
     // Fetch user profile helper function
-    const fetchUserProfile = async (userId: string) => {
+    const fetchUserProfile = async (userId: string, skipCache = false) => {
       try {
         setProfileLoading(true)
         setProfileError(null)
         
-        const result = await profileService.getProfile(userId)
+        const result = await profileService.getProfile(userId, skipCache)
         
         if (result.success && result.data) {
           setProfile(result.data)
@@ -65,8 +69,10 @@ export const useAuthListener = () => {
         clearError() // Clear any previous errors on successful session load
         logger.info('auth:listener', `Initial session loaded. Has session: ${!!session}`)
         
-        // Fetch profile if user exists
+        // Fetch profile if user exists and mark initial session as loaded
         if (currentUser?.id) {
+          initialUserId = currentUser.id
+          initialSessionLoaded = true
           fetchUserProfile(currentUser.id)
         }
       } catch (error) {
@@ -84,6 +90,12 @@ export const useAuthListener = () => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       logger.info('auth:listener', `Auth state changed: ${event}`)
 
+      // Skip profile fetch for INITIAL_SESSION if we already fetched during getInitialSession
+      const isInitialSessionEvent = event === 'INITIAL_SESSION'
+      const shouldSkipProfileFetch = isInitialSessionEvent && 
+                                     initialSessionLoaded && 
+                                     session?.user?.id === initialUserId
+
       // Handle different auth events
       switch (event) {
         case 'SIGNED_IN':
@@ -94,8 +106,8 @@ export const useAuthListener = () => {
           const signedInUser = session?.user ?? null
           setUser(signedInUser)
           setLoading(false)
-          // Fetch profile when user signs in
-          if (signedInUser?.id) {
+          // Fetch profile when user signs in (always fetch on sign in to get latest data)
+          if (signedInUser?.id && !shouldSkipProfileFetch) {
             fetchUserProfile(signedInUser.id)
           }
           break
@@ -108,6 +120,8 @@ export const useAuthListener = () => {
           setProfile(null)
           setProfileError(null)
           setLoading(false)
+          initialSessionLoaded = false
+          initialUserId = null
           break
         }
 
@@ -116,9 +130,9 @@ export const useAuthListener = () => {
           const updatedUser = session?.user ?? null
           setUser(updatedUser)
           clearError()
-          // Refresh profile when user is updated
-          if (updatedUser?.id) {
-            fetchUserProfile(updatedUser.id)
+          // Refresh profile when user is updated (always fetch to get updated data)
+          if (updatedUser?.id && !shouldSkipProfileFetch) {
+            fetchUserProfile(updatedUser.id, true) // Skip cache to get fresh data
           }
           break
         }
@@ -129,8 +143,30 @@ export const useAuthListener = () => {
           const recoveryUser = session?.user ?? null
           setUser(recoveryUser)
           setLoading(false)
-          if (recoveryUser?.id) {
+          if (recoveryUser?.id && !shouldSkipProfileFetch) {
             fetchUserProfile(recoveryUser.id)
+          }
+          break
+        }
+
+        case 'INITIAL_SESSION': {
+          // Handle INITIAL_SESSION event - only update state if not already handled
+          if (!initialSessionLoaded) {
+            setSession(session)
+            const defaultUser = session?.user ?? null
+            setUser(defaultUser)
+            setLoading(false)
+            if (defaultUser?.id) {
+              initialUserId = defaultUser.id
+              initialSessionLoaded = true
+              fetchUserProfile(defaultUser.id)
+            }
+          } else {
+            // Already loaded, just update session/user state without fetching profile
+            setSession(session)
+            const defaultUser = session?.user ?? null
+            setUser(defaultUser)
+            setLoading(false)
           }
           break
         }
@@ -140,7 +176,7 @@ export const useAuthListener = () => {
           const defaultUser = session?.user ?? null
           setUser(defaultUser)
           setLoading(false)
-          if (defaultUser?.id) {
+          if (defaultUser?.id && !shouldSkipProfileFetch) {
             fetchUserProfile(defaultUser.id)
           }
           break

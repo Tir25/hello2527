@@ -53,12 +53,12 @@ class Logger {
     }
   }
 
-  info(context: string, message: string) {
-    this.log('info', context, message)
+  info(context: string, message: string, error?: Error | unknown) {
+    this.log('info', context, message, error)
   }
 
-  warn(context: string, message: string) {
-    this.log('warn', context, message)
+  warn(context: string, message: string, error?: Error | unknown) {
+    this.log('warn', context, message, error)
   }
 
   error(context: string, message: string, error?: Error | unknown) {

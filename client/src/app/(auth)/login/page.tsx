@@ -44,7 +44,7 @@ const LoginPage = () => {
     clearError()
     setShowResendConfirmation(false)
     setResendMessage(null)
-    
+
     try {
       const result = await login({
         email: data.email,
@@ -53,10 +53,10 @@ const LoginPage = () => {
 
       if (!result.success) {
         // Check if error is email confirmation
-        const isEmailNotConfirmed = 
+        const isEmailNotConfirmed =
           result.error?.toLowerCase().includes('email not confirmed') ||
           result.error?.toLowerCase().includes('email_not_confirmed')
-        
+
         if (isEmailNotConfirmed) {
           // Store email for resend functionality
           setUserEmail(data.email)
@@ -113,7 +113,7 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated Gradient Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-violet-900 via-purple-900 to-cyan-900">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20" />
+        <div className="absolute inset-0 bg-white/5 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent)]" />
       </div>
 
       {/* Floating Blobs Animation */}
@@ -204,11 +204,10 @@ const LoginPage = () => {
                       Resend Confirmation Email
                     </Button>
                     {resendMessage && (
-                      <p className={`mt-2 text-xs ${
-                        resendMessage.includes('sent') 
-                          ? 'text-green-300' 
+                      <p className={`mt-2 text-xs ${resendMessage.includes('sent')
+                          ? 'text-green-300'
                           : 'text-red-300'
-                      }`}>
+                        }`}>
                         {resendMessage}
                       </p>
                     )}

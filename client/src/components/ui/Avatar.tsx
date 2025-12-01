@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { type Profile } from '@/lib/services/profile.service'
 
 interface AvatarProps {
@@ -15,6 +16,7 @@ const sizeClasses = {
 
 export const Avatar = ({ profile, loading = false, size = 'md', className = '' }: AvatarProps) => {
   const sizeClass = sizeClasses[size]
+  const [imageError, setImageError] = useState(false)
 
   // Get display name for initials
   const getDisplayName = () => {
@@ -22,7 +24,7 @@ export const Avatar = ({ profile, loading = false, size = 'md', className = '' }
     return profile.full_name || profile.username || 'U'
   }
 
-  // Generate initials
+  // Generate initials (safe - only uses first letters, no HTML)
   const getInitials = () => {
     const name = getDisplayName()
     return name
@@ -33,6 +35,13 @@ export const Avatar = ({ profile, loading = false, size = 'md', className = '' }
       .slice(0, 2)
   }
 
+  // Reset image error when avatar URL changes
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      setImageError(false)
+    }
+  }, [profile?.avatar_url])
+
   if (loading) {
     return (
       <div
@@ -41,33 +50,24 @@ export const Avatar = ({ profile, loading = false, size = 'md', className = '' }
     )
   }
 
-  if (profile?.avatar_url) {
-    return (
-      <div className={`${sizeClass} rounded-full overflow-hidden flex-shrink-0 border-2 border-white/50 shadow-md ${className}`}>
-        <img
-          src={profile.avatar_url}
-          alt={getDisplayName()}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            // Fallback to initials if image fails to load
-            const target = e.currentTarget
-            target.style.display = 'none'
-            const parent = target.parentElement
-            if (parent) {
-              parent.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-cyan-500 text-white font-semibold">${getInitials()}</div>`
-            }
-          }}
-        />
-      </div>
-    )
-  }
+  // Show avatar image if available and no error, otherwise show initials
+  const showImage = profile?.avatar_url && !imageError
 
-  // Show initials with gradient background
   return (
     <div
       className={`${sizeClass} rounded-full overflow-hidden flex-shrink-0 border-2 border-white/50 shadow-md flex items-center justify-center bg-gradient-to-br from-purple-500 to-cyan-500 text-white font-semibold ${className}`}
     >
-      {getInitials()}
+      {showImage ? (
+        <img
+          src={profile.avatar_url ?? undefined}
+          alt={getDisplayName()}
+          className="w-full h-full object-cover"
+          onError={() => setImageError(true)}
+          onLoad={() => setImageError(false)}
+        />
+      ) : (
+        getInitials()
+      )}
     </div>
   )
 }
