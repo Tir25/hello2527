@@ -7,8 +7,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-// Custom fetch function that routes through Vite proxy in development
-// This fixes the cookie domain issue by making requests appear to come from localhost
+// Custom fetch function that routes through Vite proxy in development.
+// In production we let Supabase's default CORS handling work without forcing credentials.
 const customFetch = (url: string | URL | Request, options?: RequestInit): Promise<Response> => {
   // In development, route Supabase requests through the Vite proxy
   if (import.meta.env.DEV) {
@@ -25,7 +25,7 @@ const customFetch = (url: string | URL | Request, options?: RequestInit): Promis
       urlString = String(url)
     }
     
-    // If this is a Supabase request, route it through the proxy
+    // If this is a Supabase request, route it through the proxy and include credentials
     if (urlString.includes(supabaseUrl)) {
       const proxyUrl = urlString.replace(supabaseUrl, '/supabase')
       return fetch(proxyUrl, {
@@ -35,10 +35,12 @@ const customFetch = (url: string | URL | Request, options?: RequestInit): Promis
     }
   }
   
-  // In production or for non-Supabase URLs, use normal fetch
+  // In production or for non-Supabase URLs, use normal fetch but explicitly
+  // disable credentials so that Supabase's CORS header Access-Control-Allow-Origin: *
+  // is compatible with the request.
   return fetch(url, {
     ...options,
-    credentials: 'include',
+    credentials: 'omit',
   })
 }
 
