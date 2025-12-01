@@ -149,7 +149,7 @@ export const NavigationOrb: React.FC = () => {
   }
 
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center justify-center pointer-events-none">
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-navigation-orb flex items-center justify-center pointer-events-none">
       {/* --- The Menu Fan --- */}
       {/* Wrapper uses pointer-events-none so only children are interactive */}
       <AnimatePresence>

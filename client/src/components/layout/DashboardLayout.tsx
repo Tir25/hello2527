@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, MessageSquare } from 'lucide-react'
+import { User, MessageSquare, LayoutDashboard } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
 interface DashboardLayoutProps {
@@ -10,6 +10,11 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { loading } = useAuthStore()
+  const location = useLocation()
+
+  const isChatRoute = location.pathname === '/'
+  const isDashboardRoute = location.pathname === '/dashboard'
+  const isProfileRoute = location.pathname === '/profile'
 
   if (loading) {
     return (
@@ -76,11 +81,44 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </nav>
 
       {/* Main Content */}
-      <main className="relative z-10 pt-8 pb-16" role="main">
+      <main className="relative z-10 pt-8 pb-20 md:pb-16" role="main">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/90 border-t border-gray-200 shadow-lg md:hidden backdrop-blur-xl">
+        <div className="max-w-md mx-auto px-6 py-2 flex items-center justify-between gap-4">
+          <Link
+            to="/"
+            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-xs ${
+              isChatRoute ? 'text-purple-600 font-semibold bg-purple-50' : 'text-gray-500'
+            }`}
+          >
+            <MessageSquare size={18} />
+            <span>Chat</span>
+          </Link>
+          <Link
+            to="/dashboard"
+            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-xs ${
+              isDashboardRoute ? 'text-purple-600 font-semibold bg-purple-50' : 'text-gray-500'
+            }`}
+          >
+            <LayoutDashboard size={18} />
+            <span>Home</span>
+          </Link>
+          <Link
+            to="/profile"
+            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-xs ${
+              isProfileRoute ? 'text-purple-600 font-semibold bg-purple-50' : 'text-gray-500'
+            }`}
+          >
+            <User size={18} />
+            <span>Profile</span>
+          </Link>
+        </div>
+      </nav>
     </div>
   )
 }

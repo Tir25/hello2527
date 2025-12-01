@@ -1,69 +1,99 @@
-import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Search } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, MessageCircle, Users } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useChatStore } from '@/store/chatStore'
-import { getUsers } from '@/services/userService'
 import { logger } from '@/lib/logger'
 import Button from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { SearchBar } from './SearchBar'
 import { UserItem } from './UserItem'
+import type { Profile } from '@/lib/services/profile.service'
 
 export const Sidebar = () => {
-  const { user, profile, profileLoading } = useAuthStore()
-  const { selectedUser, users, setSelectedUser, setUsers } = useChatStore()
+  const { user, session, profile, profileLoading } = useAuthStore()
+  const { 
+    selectedUser, 
+    setSelectedUser,
+    // Conversations (users with chat history)
+    conversations,
+    conversationsLoading,
+    conversationsError,
+    fetchConversations,
+    // Search (global user search)
+    searchResults,
+    searchLoading,
+    isSearching,
+    searchNewUsers,
+    clearSearch,
+  } = useChatStore()
+  
   const [searchQuery, setSearchQuery] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Fetch users on mount
+  // Fetch conversations on mount and when user/session changes
   useEffect(() => {
-    const fetchUsers = async () => {
-      if (!user?.id) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError(null)
-        const result = await getUsers(user.id)
-
-        if (result.success && result.data) {
-          setUsers(result.data)
-          logger.info('Sidebar:fetchUsers', `Loaded ${result.data.length} users`)
-        } else {
-          setError(result.error || 'Failed to load users')
-          logger.error('Sidebar:fetchUsers', 'Failed to fetch users', result.error)
-        }
-      } catch (err) {
-        const errorMessage = 'An unexpected error occurred'
-        setError(errorMessage)
-        logger.error('Sidebar:fetchUsers', 'Unexpected error', err)
-      } finally {
-        setLoading(false)
-      }
+    // Only attempt to load conversations when we have an authenticated session
+    if (!session || !user?.id) {
+      return
     }
 
-    fetchUsers()
-  }, [user?.id, setUsers])
+    fetchConversations()
+    logger.info('Sidebar:mount', 'Fetching conversations for authenticated user')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, user?.id])
 
-  // Filter users based on search query
-  const filteredUsers = users.filter((u) => {
-    const name = (u.full_name || u.username || u.email || '').toLowerCase()
-    return name.includes(searchQuery.toLowerCase())
-  })
+  // Cleanup search timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Handle search input change with debounce
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    
+    // Clear any pending search
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    if (value.trim() && user?.id) {
+      // Debounce the search
+      searchTimeoutRef.current = setTimeout(() => {
+        searchNewUsers(value, user.id)
+      }, 300)
+    } else if (!value.trim()) {
+      // Clear search immediately when input is empty
+      clearSearch()
+    }
+  }
 
   // Handle user selection
-  const handleUserClick = (user: typeof users[0]) => {
-    setSelectedUser(user)
-    logger.info('Sidebar:handleUserClick', `Selected user: ${user.id}`)
+  const handleUserClick = (clickedUser: Profile) => {
+    setSelectedUser(clickedUser)
+    logger.info('Sidebar:handleUserClick', `Selected user: ${clickedUser.id}`)
+    
+    // Clear search after selecting a user from search results
+    // This returns to the conversations view
+    if (isSearching) {
+      setSearchQuery('')
+      clearSearch()
+    }
   }
 
   // Get display name for current user
   const displayName =
     profile?.full_name || profile?.username || user?.email?.split('@')[0] || 'User'
+
+  // Determine which list to show
+  const showSearchResults = searchQuery.trim().length > 0
+  const displayList = showSearchResults ? searchResults : conversations
+  const isLoading = showSearchResults ? searchLoading : conversationsLoading
+  const error = showSearchResults ? null : conversationsError
 
   return (
     <aside className="w-[400px] flex-shrink-0 backdrop-blur-xl bg-white/70 border-r border-white/20 flex flex-col shadow-lg">
@@ -98,12 +128,43 @@ export const Sidebar = () => {
 
       {/* Search Bar */}
       <div className="p-4 border-b border-white/20">
-        <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        <SearchBar 
+          value={searchQuery} 
+          onChange={handleSearchChange}
+          placeholder="Search for new friends..."
+        />
+        
+        {/* Search mode indicator */}
+        <AnimatePresence>
+          {showSearchResults && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-center gap-2 mt-2 px-2"
+            >
+              <Users size={14} className="text-purple-500" />
+              <span className="text-xs text-purple-600 font-medium">
+                Global Search
+              </span>
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  clearSearch()
+                }}
+                className="ml-auto text-xs text-gray-500 hover:text-gray-700 underline"
+              >
+                Back to chats
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* User List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2 sidebar-scroll">
-        {loading ? (
+        {isLoading ? (
+          // Loading skeleton
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
               <div
@@ -119,38 +180,105 @@ export const Sidebar = () => {
             ))}
           </div>
         ) : error ? (
+          // Error state
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <p className="text-sm text-red-500 mb-2">{error}</p>
             <Button
               variant="secondary"
-              onClick={() => window.location.reload()}
+              onClick={() => fetchConversations()}
               className="text-xs"
             >
               Retry
             </Button>
           </div>
-        ) : filteredUsers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Search size={32} className="text-gray-400 mb-2" />
-            <p className="text-sm text-gray-500">
-              {searchQuery ? 'No users found' : 'No users available'}
-            </p>
-          </div>
+        ) : displayList.length === 0 ? (
+          // Empty states - different for search vs conversations
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-12 text-center px-4"
+          >
+            {showSearchResults ? (
+              // No search results
+              <>
+                <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mb-4">
+                  <Search size={28} className="text-purple-400" />
+                </div>
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  No users found
+                </p>
+                <p className="text-xs text-gray-500">
+                  Try a different search term
+                </p>
+              </>
+            ) : (
+              // No conversations yet (new account)
+              <>
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-cyan-100 flex items-center justify-center mb-4">
+                  <MessageCircle size={36} className="text-purple-500" />
+                </div>
+                <p className="text-base font-semibold text-gray-800 mb-2">
+                  No chats yet
+                </p>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  Search for a friend above to start your first conversation!
+                </p>
+                <motion.div
+                  className="mt-4 flex items-center gap-1 text-purple-500"
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                >
+                  <Search size={14} />
+                  <span className="text-xs font-medium">Type a name above</span>
+                </motion.div>
+              </>
+            )}
+          </motion.div>
         ) : (
+          // User list
           <div className="space-y-2">
-            {filteredUsers.map((user) => (
-              <UserItem
-                key={user.id}
-                user={user}
-                isSelected={selectedUser?.id === user.id}
-                onClick={() => handleUserClick(user)}
-              />
-            ))}
+            <AnimatePresence mode="popLayout">
+              {displayList.map((listUser) => {
+                const lastMessage =
+                  'last_message' in listUser
+                    ? (listUser as import('@/services/userService').ConversationProfile).last_message
+                    : undefined
+
+                const lastMessageTime =
+                  'last_message_time' in listUser
+                    ? (listUser as import('@/services/userService').ConversationProfile).last_message_time
+                    : undefined
+
+                const unreadCount =
+                  'unread_count' in listUser
+                    ? (listUser as import('@/services/userService').ConversationProfile).unread_count
+                    : undefined
+
+                return (
+                <motion.div
+                  key={listUser.id}
+                  layout
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <UserItem
+                    user={listUser}
+                    isSelected={selectedUser?.id === listUser.id}
+                    onClick={() => handleUserClick(listUser)}
+                    // Pass conversation metadata if available (for showing last message preview)
+                    lastMessage={lastMessage}
+                    lastMessageTime={lastMessageTime}
+                    unreadCount={unreadCount}
+                  />
+                </motion.div>
+                )
+              })}
+            </AnimatePresence>
           </div>
         )}
       </div>
-
     </aside>
   )
 }
-

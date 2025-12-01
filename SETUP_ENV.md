@@ -2,79 +2,36 @@
 
 This guide will help you create the required `.env` files for both the client and server.
 
-## Quick Setup
+## Quick Setup (Local Development)
 
 ### Option 1: Manual Creation
 
 #### Client Environment (`.env` file in `heloo-platform/client/`)
 
-Create a file named `.env` in the `client` directory with the following content:
+Create a file named `.env` in the `client` directory with the following **example** content:
 
 ```env
-VITE_SUPABASE_URL=https://ckuxuusctkmuwmeqnwxw.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdXh1dXNjdGttdXdtZXFud3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0ODE4ODksImV4cCI6MjA4MDA1Nzg4OX0.gmWqJY0VvIVEmQzisbxdLgeAURZhCr5g_xrGZtOXKXk
+VITE_SUPABASE_URL=<your_supabase_project_url>
+VITE_SUPABASE_ANON_KEY=<your_supabase_anon_public_key>
 VITE_API_URL=http://localhost:5000
 ```
 
 #### Server Environment (`.env` file in `heloo-platform/server/`)
 
-Create a file named `.env` in the `server` directory with the following content:
+Create a file named `.env` in the `server` directory with the following **example** content:
 
 ```env
 PORT=5000
-SUPABASE_URL=https://ckuxuusctkmuwmeqnwxw.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdXh1dXNjdGttdXdtZXFud3h3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDQ4MTg4OSwiZXhwIjoyMDgwMDU3ODg5fQ.i11iqD8FggmMi0U5MfjHcLSQhk9_hk7o3B3l67-aaWc
+SUPABASE_URL=<your_supabase_project_url>
+SUPABASE_SERVICE_ROLE_KEY=<your_supabase_service_role_key>
 CLIENT_URL=http://localhost:3000
 NODE_ENV=development
 ```
 
-### Option 2: PowerShell Script
+### Option 2: Scripted Creation (Optional)
 
-Run the following PowerShell commands from the `heloo-platform` directory:
-
-```powershell
-# Create client .env file
-@"
-VITE_SUPABASE_URL=https://ckuxuusctkmuwmeqnwxw.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdXh1dXNjdGttdXdtZXFud3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0ODE4ODksImV4cCI6MjA4MDA1Nzg4OX0.gmWqJY0VvIVEmQzisbxdLgeAURZhCr5g_xrGZtOXKXk
-VITE_API_URL=http://localhost:5000
-"@ | Out-File -FilePath "client\.env" -Encoding utf8
-
-# Create server .env file
-@"
-PORT=5000
-SUPABASE_URL=https://ckuxuusctkmuwmeqnwxw.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdXh1dXNjdGttdXdtZXFud3h3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDQ4MTg4OSwiZXhwIjoyMDgwMDU3ODg5fQ.i11iqD8FggmMi0U5MfjHcLSQhk9_hk7o3B3l67-aaWc
-CLIENT_URL=http://localhost:3000
-NODE_ENV=development
-"@ | Out-File -FilePath "server\.env" -Encoding utf8
-
-Write-Host "✅ Environment files created successfully!" -ForegroundColor Green
-```
-
-### Option 3: Bash Script (if using Git Bash or WSL)
-
-Run the following commands from the `heloo-platform` directory:
-
-```bash
-# Create client .env file
-cat > client/.env << 'EOF'
-VITE_SUPABASE_URL=https://ckuxuusctkmuwmeqnwxw.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdXh1dXNjdGttdXdtZXFud3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0ODE4ODksImV4cCI6MjA4MDA1Nzg4OX0.gmWqJY0VvIVEmQzisbxdLgeAURZhCr5g_xrGZtOXKXk
-VITE_API_URL=http://localhost:5000
-EOF
-
-# Create server .env file
-cat > server/.env << 'EOF'
-PORT=5000
-SUPABASE_URL=https://ckuxuusctkmuwmeqnwxw.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdXh1dXNjdGttdXdtZXFud3h3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDQ4MTg4OSwiZXhwIjoyMDgwMDU3ODg5fQ.i11iqD8FggmMi0U5MfjHcLSQhk9_hk7o3B3l67-aaWc
-CLIENT_URL=http://localhost:3000
-NODE_ENV=development
-EOF
-
-echo "✅ Environment files created successfully!"
-```
+You can also script creation of these files if you prefer, but **never hard-code real secrets in version-controlled scripts**.  
+Instead, use your shell or CI/CD secrets to echo the correct values into `.env` files on your own machine or in your deployment pipeline.
 
 ## Verification
 

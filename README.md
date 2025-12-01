@@ -59,20 +59,24 @@ heloo-platform/
    npm install
    ```
 
-### Environment Setup
+### Environment Setup (Development)
+
+See `SETUP_ENV.md` for full details. At minimum, create:
 
 1. **Client Environment** (`client/.env`)
    ```env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_SUPABASE_URL=<your_supabase_project_url>
+   VITE_SUPABASE_ANON_KEY=<your_supabase_anon_public_key>
    VITE_API_URL=http://localhost:5000
    ```
 
 2. **Server Environment** (`server/.env`)
    ```env
    PORT=5000
-   SUPABASE_URL=your_supabase_url
-   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+   SUPABASE_URL=<your_supabase_project_url>
+   SUPABASE_SERVICE_ROLE_KEY=<your_supabase_service_role_key>
+   CLIENT_URL=http://localhost:3000
+   NODE_ENV=development
    ```
 
 ### Running the Application
@@ -93,21 +97,31 @@ npm run dev
 ```
 Server will run on `http://localhost:5000`
 
-#### Production Build
+#### Production Build & Deployment
 
-**Client:**
-```bash
-cd client
-npm run build
-npm run preview
-```
+**Build artifacts**
 
-**Server:**
-```bash
-cd server
-npm run build
-npm start
-```
+- **Client:**
+  ```bash
+  cd client
+  npm run build
+  # Deploy contents of client/dist to your static hosting provider
+  ```
+
+- **Server:**
+  ```bash
+  cd server
+  npm run build
+  npm start   # or configure your process manager / hosting platform
+  ```
+
+**Production environment notes**
+
+- In production, set:
+  - `VITE_API_URL` to your deployed server URL (for example `https://api.yourdomain.com`)
+  - `CLIENT_URL` (in `server/.env`) to your deployed frontend URL (for example `https://app.yourdomain.com`)
+  - `NODE_ENV=production` on the server
+- The server auto-confirm email endpoint is **disabled in production**; normal Supabase email confirmation flow will apply.
 
 ## 📁 Folder Structure
 

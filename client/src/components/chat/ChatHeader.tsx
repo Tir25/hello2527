@@ -16,7 +16,7 @@ export const ChatHeader = ({ selectedUser, onBack, showBackButton = false }: Cha
     <motion.header
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-white/20 shadow-sm"
+      className="sticky top-0 z-chat-header backdrop-blur-xl bg-white/70 border-b border-white/20 shadow-sm"
     >
       <div className="flex items-center gap-4 px-4 py-3">
         {/* Back Button (Mobile Only) */}

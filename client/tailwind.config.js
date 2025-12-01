@@ -30,6 +30,13 @@ export default {
             fontFamily: {
                 sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
             },
+            zIndex: {
+                chat: '10',
+                'chat-input': '20',
+                'chat-header': '25',
+                'navigation-orb': '30',
+                modal: '40',
+            },
         },
     },
     plugins: [],

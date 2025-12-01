@@ -9,11 +9,22 @@ import { MessageInput } from './MessageInput'
 import { logger } from '@/lib/logger'
 import { toast } from '@/store/toastStore'
 
+// Local alias type for scroll behavior to avoid relying on DOM lib globals
+type ScrollBehaviorType = 'auto' | 'smooth'
+
 export const ChatWindow = () => {
   const { selectedUser, messages, loading, fetchMessages, sendMessage, subscribeToMessages, unsubscribeFromMessages, setSelectedUser } = useChatStore()
   const { user } = useAuthStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+
+  const NEAR_BOTTOM_THRESHOLD_PX = 160 // Consider user "at bottom" if within this many pixels
+
+  const scrollToBottom = (behavior: ScrollBehaviorType = 'smooth') => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior, block: 'end' })
+    }
+  }
 
   // Fetch messages when a user is selected
   useEffect(() => {
@@ -46,22 +57,41 @@ export const ChatWindow = () => {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    }
+    scrollToBottom('smooth')
   }, [messages])
 
-  // Ensure messages stay scrolled to bottom on viewport resize (e.g., mobile keyboard)
+  // Keep view pinned near bottom on viewport changes (e.g., keyboard show/hide)
   useEffect(() => {
-    const handleResize = () => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
-      }
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    const isNearBottom = () => {
+      const distanceFromBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight
+      return distanceFromBottom <= NEAR_BOTTOM_THRESHOLD_PX
     }
 
-    window.addEventListener('resize', handleResize)
+    const handleViewportChange = () => {
+      if (!isNearBottom()) return
+      scrollToBottom('smooth')
+    }
+
+    const visualViewport = window.visualViewport
+
+    visualViewport?.addEventListener('resize', handleViewportChange)
+    visualViewport?.addEventListener('scroll', handleViewportChange)
+
+    const handleWindowResize = () => {
+      if (!isNearBottom()) return
+      scrollToBottom('smooth')
+    }
+
+    window.addEventListener('resize', handleWindowResize)
+
     return () => {
-      window.removeEventListener('resize', handleResize)
+      visualViewport?.removeEventListener('resize', handleViewportChange)
+      visualViewport?.removeEventListener('scroll', handleViewportChange)
+      window.removeEventListener('resize', handleWindowResize)
     }
   }, [])
 
@@ -86,7 +116,7 @@ export const ChatWindow = () => {
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] md:h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Chat Header */}
       <ChatHeader 
         selectedUser={selectedUser} 
@@ -97,7 +127,7 @@ export const ChatWindow = () => {
       {/* Messages List */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-2 py-4 pb-28 md:pb-4 messages-scroll"
+        className="flex-1 overflow-y-auto px-2 py-4 messages-scroll"
         style={{
           scrollBehavior: 'smooth',
         }}

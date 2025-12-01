@@ -17,7 +17,7 @@ export const SearchBar = ({
 }: SearchBarProps) => {
   return (
     <motion.div
-      className={cn('relative mb-4', className)}
+      className={cn('relative', className)}
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
