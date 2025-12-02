@@ -172,7 +172,7 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`mb-2 flex items-center gap-3 p-3 rounded-xl border border-white/20 ${isOwn ? 'bg-white/10' : 'bg-white/20'
+            className={`mb-2 flex items-center gap-3 p-3 rounded-xl border border-white/20 ${MEDIA_MAX_WIDTH.full} w-full overflow-hidden ${isOwn ? 'bg-white/10' : 'bg-white/20'
               }`}
           >
             {audioLoading && (
@@ -192,7 +192,7 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
             <audio
               src={mediaUrl}
               controls
-              className="flex-1 h-8"
+              className="flex-1 h-8 min-w-0"
               preload="metadata"
               aria-label="Audio message"
               onLoadedMetadata={() => handleMediaLoad('audio')}
