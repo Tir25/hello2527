@@ -1,20 +1,55 @@
 import { type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, MessageSquare, LayoutDashboard } from 'lucide-react'
+import { User, MessageSquare, LayoutDashboard, Settings } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
 interface DashboardLayoutProps {
   children: ReactNode
+  hideTopNav?: boolean
 }
 
-export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+interface NavIconProps {
+  to: string
+  label: string
+  icon: React.ComponentType<{ size?: number; className?: string }>
+  active?: boolean
+}
+
+const NavIcon = ({ to, label, icon: Icon, active }: NavIconProps) => {
+  return (
+    <Link
+      to={to}
+      className="group rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/70"
+      aria-label={label}
+    >
+      <div
+        className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-md transition-all duration-200 border ${
+          active
+            ? 'bg-gradient-to-br from-purple-500 via-fuchsia-500 to-cyan-400 border-white/70 scale-105'
+            : 'bg-white/80 border-white/50 hover:bg-white'
+        }`}
+      >
+        <Icon
+          size={20}
+          className={active ? 'text-white' : 'text-gray-700'}
+        />
+      </div>
+      <p className="mt-1 text-[11px] text-center text-gray-600 group-hover:text-gray-800">
+        {label}
+      </p>
+    </Link>
+  )
+}
+
+export const DashboardLayout = ({ children, hideTopNav }: DashboardLayoutProps) => {
   const { loading } = useAuthStore()
   const location = useLocation()
 
   const isChatRoute = location.pathname === '/'
   const isDashboardRoute = location.pathname === '/dashboard'
   const isProfileRoute = location.pathname === '/profile'
+  const isSettingsRoute = location.pathname === '/settings'
 
   if (loading) {
     return (
@@ -42,83 +77,96 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className="absolute top-20 left-10 w-72 h-72 bg-purple-200/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-200/20 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Navigation Bar */}
-      <nav className="relative z-50 flex-none backdrop-blur-xl bg-white/70 border-b border-white/20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <motion.h1
-                whileHover={{ scale: 1.05 }}
-                className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-purple-500 to-cyan-500 bg-clip-text text-transparent"
-              >
-                He'loo
-              </motion.h1>
-            </Link>
+      {/* Navigation Bar (hidden for full-height chat view) */}
+      {!hideTopNav && (
+        <nav className="relative z-50 flex-none backdrop-blur-xl bg-white/70 border-b border-white/20 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              {/* Logo */}
+              <Link to="/" className="flex items-center gap-2">
+                <motion.h1
+                  whileHover={{ scale: 1.05 }}
+                  className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-purple-500 to-cyan-500 bg-clip-text text-transparent"
+                >
+                  He'loo
+                </motion.h1>
+              </Link>
 
-            {/* Navigation Links */}
-            <div className="hidden md:flex items-center gap-6">
-              <Link
-                to="/"
-                className="text-gray-700/80 hover:text-gray-900 transition-colors flex items-center gap-2"
-              >
-                <MessageSquare size={20} />
-                <span>Chat</span>
-              </Link>
-              <Link
-                to="/profile"
-                className="text-gray-700/80 hover:text-gray-900 transition-colors flex items-center gap-2"
-              >
-                <User size={20} />
-                <span>Profile</span>
-              </Link>
+              {/* Navigation Links */}
+              <div className="hidden md:flex items-center gap-6">
+                <Link
+                  to="/"
+                  className="text-gray-700/80 hover:text-gray-900 transition-colors flex items-center gap-2"
+                >
+                  <MessageSquare size={20} />
+                  <span>Chat</span>
+                </Link>
+                <Link
+                  to="/profile"
+                  className="text-gray-700/80 hover:text-gray-900 transition-colors flex items-center gap-2"
+                >
+                  <User size={20} />
+                  <span>Profile</span>
+                </Link>
+              </div>
+
+              {/* User Menu */}
+              <div className="flex items-center gap-4" />
             </div>
-
-            {/* User Menu */}
-            <div className="flex items-center gap-4" />
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       {/* Main Content - rigid frame, no page scrolling */}
       <main className="relative z-10 flex-1 overflow-hidden" role="main">
-        <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {children}
+        <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex">
+          {/* Desktop side navigation */}
+          <aside className="hidden md:flex w-20 flex-col items-center justify-between py-6 mr-6 rounded-3xl bg-white/70/90 border border-white/40 backdrop-blur-2xl shadow-xl">
+            <div className="flex flex-col items-center gap-4">
+              {/* App logo mini */}
+              <Link to="/" className="mb-2">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 via-fuchsia-500 to-cyan-400 flex items-center justify-center text-xs font-semibold text-white shadow-lg"
+                >
+                  He
+                </motion.div>
+              </Link>
+
+              {/* Nav icons */}
+              <NavIcon
+                to="/"
+                active={isChatRoute}
+                label="Chat"
+                icon={MessageSquare}
+              />
+              <NavIcon
+                to="/dashboard"
+                active={isDashboardRoute}
+                label="Home"
+                icon={LayoutDashboard}
+              />
+              <NavIcon
+                to="/profile"
+                active={isProfileRoute}
+                label="Profile"
+                icon={User}
+              />
+              <NavIcon
+                to="/settings"
+                active={isSettingsRoute}
+                label="Settings"
+                icon={Settings}
+              />
+            </div>
+          </aside>
+
+          {/* Page content */}
+          <div className="flex-1 h-full overflow-hidden">
+            {children}
+          </div>
         </div>
       </main>
-
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/90 border-t border-gray-200 shadow-lg md:hidden backdrop-blur-xl">
-        <div className="max-w-md mx-auto px-6 py-2 flex items-center justify-between gap-4">
-          <Link
-            to="/"
-            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-xs ${
-              isChatRoute ? 'text-purple-600 font-semibold bg-purple-50' : 'text-gray-500'
-            }`}
-          >
-            <MessageSquare size={18} />
-            <span>Chat</span>
-          </Link>
-          <Link
-            to="/dashboard"
-            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-xs ${
-              isDashboardRoute ? 'text-purple-600 font-semibold bg-purple-50' : 'text-gray-500'
-            }`}
-          >
-            <LayoutDashboard size={18} />
-            <span>Home</span>
-          </Link>
-          <Link
-            to="/profile"
-            className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-xs ${
-              isProfileRoute ? 'text-purple-600 font-semibold bg-purple-50' : 'text-gray-500'
-            }`}
-          >
-            <User size={18} />
-            <span>Profile</span>
-          </Link>
-        </div>
-      </nav>
     </div>
   )
 }

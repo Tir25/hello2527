@@ -120,7 +120,7 @@ export const ChatWindow = () => {
       {/* Message list - only scrollable area */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto overscroll-none px-2 py-4 messages-scroll"
+        className="flex-1 overflow-y-auto overscroll-none px-2 pt-4 pb-1 messages-scroll"
         style={{ scrollBehavior: 'smooth' }}
       >
         {loading && messages.length === 0 ? (

@@ -32,6 +32,7 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
   // Check if media exists or if it's expired (media_type set but media_url is null)
   const hasMedia = message.media_url && message.media_type
   const isExpired = message.media_type && !message.media_url
+  const hasTextContent = message.content && message.content !== MEDIA_PLACEHOLDER
 
   // Handle lightbox close - extracted to avoid duplication
   const handleCloseLightbox = () => {
@@ -106,7 +107,7 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`mb-2 rounded-xl overflow-hidden ${MEDIA_MAX_WIDTH.full} relative`}
+            className={`rounded-xl overflow-hidden ${MEDIA_MAX_WIDTH.full} relative ${hasTextContent ? 'mb-2' : 'mb-1'}`}
           >
             {imageLoading && (
               <div
@@ -130,6 +131,12 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
               onLoad={() => handleMediaLoad('image')}
               onError={() => handleMediaError('image')}
             />
+            {/* Inline timestamp overlay for image-only messages */}
+            {!hasTextContent && (
+              <div className="absolute bottom-2 right-2 rounded-full bg-black/65 text-white text-[10px] px-2 py-0.5 shadow-sm">
+                {formattedTime}
+              </div>
+            )}
           </motion.div>
         )
 
@@ -138,7 +145,7 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`mb-2 rounded-xl overflow-hidden ${MEDIA_MAX_WIDTH.full} relative`}
+            className={`rounded-xl overflow-hidden ${MEDIA_MAX_WIDTH.full} relative ${hasTextContent ? 'mb-2' : 'mb-1'}`}
           >
             {videoLoading && (
               <div
@@ -164,6 +171,12 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
             >
               Your browser does not support the video tag.
             </video>
+            {/* Inline timestamp overlay for video-only messages */}
+            {!hasTextContent && (
+              <div className="absolute bottom-2 right-2 rounded-full bg-black/65 text-white text-[10px] px-2 py-0.5 shadow-sm">
+                {formattedTime}
+              </div>
+            )}
           </motion.div>
         )
 
@@ -172,7 +185,7 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`mb-2 flex items-center gap-3 p-3 rounded-xl border border-white/20 ${MEDIA_MAX_WIDTH.full} w-full overflow-hidden ${isOwn ? 'bg-white/10' : 'bg-white/20'
+            className={`mb-2 flex items-center gap-2 px-3 py-2 rounded-xl border border-white/20 ${MEDIA_MAX_WIDTH.full} w-full overflow-hidden ${isOwn ? 'bg-white/10' : 'bg-white/20'
               }`}
           >
             {audioLoading && (
@@ -200,6 +213,12 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
             >
               Your browser does not support the audio tag.
             </audio>
+            {/* Inline timestamp for audio messages */}
+            <span
+              className={`ml-2 text-[10px] whitespace-nowrap ${isOwn ? 'text-white/80' : 'text-gray-600'}`}
+            >
+              {formattedTime}
+            </span>
           </motion.div>
         )
 
@@ -213,7 +232,7 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
             target="_blank"
             rel="noopener noreferrer"
             download={sanitizedFilename}
-            className={`mb-2 flex items-center gap-3 p-3 rounded-xl border border-white/20 ${isOwn ? 'bg-white/10' : 'bg-white/20'
+            className={`mb-1.5 flex items-center gap-2.5 p-2.5 rounded-lg border border-white/20 ${isOwn ? 'bg-white/10' : 'bg-white/15'
               } hover:opacity-80 transition-opacity cursor-pointer`}
             aria-label={`Download document: ${sanitizedFilename}`}
           >
@@ -235,6 +254,12 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
               className={isOwn ? 'text-white/70' : 'text-gray-500'}
               aria-hidden="true"
             />
+            {/* Inline timestamp for document-only messages */}
+            {!hasTextContent && (
+              <span className={`ml-2 text-[10px] whitespace-nowrap ${isOwn ? 'text-white/80' : 'text-gray-600'}`}>
+                {formattedTime}
+              </span>
+            )}
           </motion.a>
         )
       }
@@ -256,7 +281,7 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
           className={`max-w-[70%] sm:max-w-[75%] md:max-w-[60%] ${isOwn
               ? 'bg-gradient-to-r from-violet-500 to-blue-500 text-white rounded-2xl rounded-tr-md'
               : 'bg-white/30 backdrop-blur-sm text-gray-900 rounded-2xl rounded-tl-md'
-            } px-4 py-2.5 shadow-lg border border-white/20`}
+            } ${hasMedia && !hasTextContent ? 'p-1.5' : 'px-4 py-2.5'} shadow-lg border border-white/20`}
         >
           {renderMedia()}
 
@@ -269,26 +294,32 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
             </p>
           )}
 
-          <div
-            className={`flex items-center justify-end gap-1 mt-1.5 ${isOwn ? 'text-white/80' : 'text-gray-500'
-              }`}
-          >
-            <span className="text-xs">{formattedTime}</span>
-            {isOwn && message.is_read && (
-              <svg
-                className="w-4 h-4"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-          </div>
+          {/* Footer timestamp/read status
+              - Hidden for media-only messages where time is inline
+              - Also hidden for audio messages (audio always shows time inside its row)
+          */}
+          {!(hasMedia && (!hasTextContent || message.media_type === 'audio')) && (
+            <div
+              className={`flex items-center justify-end gap-1 mt-1.5 ${isOwn ? 'text-white/80' : 'text-gray-500'
+                }`}
+            >
+              <span className="text-xs">{formattedTime}</span>
+              {isOwn && message.is_read && (
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+            </div>
+          )}
         </div>
       </motion.div>
 

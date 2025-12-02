@@ -7,6 +7,7 @@ import ChatPage from './app/(dashboard)/chat/page'
 import RootLayout from './app/layout'
 import { DashboardPage } from './pages/dashboard'
 import { ProfilePage } from './pages/profile'
+import { SettingsPage } from './pages/settings'
 
 function App() {
   return (
@@ -52,6 +53,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <SettingsPage />
+                </DashboardLayout>
               </ProtectedRoute>
             }
           />

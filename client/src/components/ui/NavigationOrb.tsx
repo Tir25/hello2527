@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, type Variants } from 'framer-motion'
-import { type LucideIcon, User, Settings, LogOut, Menu, X } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
+import { type LucideIcon, Settings, Menu, X, LayoutDashboard, MessageSquare } from 'lucide-react'
 import { logger } from '@/lib/logger'
 import { toast } from '@/store/toastStore'
 
@@ -24,22 +23,34 @@ interface MenuItemConfig {
 export const NavigationOrb: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false)
   const navigate = useNavigate()
-  const { logout } = useAuth()
 
   const DEG_TO_RAD = Math.PI / 180
 
   // Menu configuration
   const menuItems: MenuItemConfig[] = [
     {
-      id: 'profile',
-      icon: User,
-      label: 'Profile',
+      id: 'chat',
+      icon: MessageSquare,
+      label: 'Chat',
       action: () => {
         try {
-          navigate('/profile')
+          navigate('/')
         } catch (error) {
-          logger.error('NavigationOrb:navigate', 'Failed to navigate to profile', error)
-          toast.error('Failed to open profile')
+          logger.error('NavigationOrb:navigate', 'Failed to navigate to chat', error)
+          toast.error('Failed to open chat')
+        }
+      },
+    },
+    {
+      id: 'dashboard',
+      icon: LayoutDashboard,
+      label: 'Dashboard',
+      action: () => {
+        try {
+          navigate('/dashboard')
+        } catch (error) {
+          logger.error('NavigationOrb:navigate', 'Failed to navigate to dashboard', error)
+          toast.error('Failed to open dashboard')
         }
       },
     },
@@ -48,32 +59,11 @@ export const NavigationOrb: React.FC = () => {
       icon: Settings,
       label: 'Settings',
       action: () => {
-        // Placeholder – can be wired to a settings modal later
-        logger.info('NavigationOrb:settings', 'Settings clicked')
-        toast.info('Settings coming soon')
-      },
-    },
-    {
-      id: 'logout',
-      icon: LogOut,
-      label: 'Logout',
-      action: async () => {
         try {
-          const result = await logout()
-
-          if (result?.success) {
-            logger.info('NavigationOrb:logout', 'Logout successful')
-            toast.success('Logged out successfully')
-          } else {
-            logger.error('NavigationOrb:logout', 'Logout failed', result?.error)
-            toast.error(result?.error || 'Failed to log out, redirecting to login')
-          }
+          navigate('/settings')
         } catch (error) {
-          logger.error('NavigationOrb:logout', 'Unexpected logout error', error)
-          toast.error('Unexpected error during logout, redirecting to login')
-        } finally {
-          // For safety and consistency with previous implementation, always send user to login
-          navigate('/login')
+          logger.error('NavigationOrb:navigate', 'Failed to navigate to settings', error)
+          toast.error('Failed to open settings')
         }
       },
     },
@@ -82,11 +72,11 @@ export const NavigationOrb: React.FC = () => {
   // Animation Variants
   const orbVariants: Variants = {
     breathing: {
-      scale: [1, 1.05, 1],
+      scale: [1, 1.03, 1],
       transition: {
-        duration: 3,
+        duration: 4.5,
         repeat: Infinity,
-        ease: 'easeInOut',
+        ease: [0.4, 0.0, 0.2, 1], // smoother, more natural ease
       },
     },
     active: {
@@ -149,7 +139,7 @@ export const NavigationOrb: React.FC = () => {
   }
 
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-navigation-orb flex items-center justify-center pointer-events-none">
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] flex items-center justify-center pointer-events-none">
       {/* --- The Menu Fan --- */}
       {/* Wrapper uses pointer-events-none so only children are interactive */}
       <AnimatePresence>

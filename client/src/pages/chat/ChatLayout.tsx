@@ -34,9 +34,12 @@ export const ChatLayout = ({ children }: ChatLayoutProps) => {
         {children}
       </main>
 
-      {/* Global floating navigation orb */}
-      {/* Only show orb when no chat is open to avoid overlapping the input box on all screens */}
-      {!selectedUser && <NavigationOrb />}
+      {/* Mobile orb on conversation list (no active chat) */}
+      {!selectedUser && (
+        <div className="md:hidden absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none">
+          <NavigationOrb />
+        </div>
+      )}
     </div>
   )
 }

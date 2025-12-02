@@ -390,9 +390,9 @@ export const MessageInput = ({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="z-chat-input flex-shrink-0 backdrop-blur-xl bg-white/80 border-t border-white/20 px-4 pt-2 pb-safe safe-bottom mb-14 md:mb-0"
+      className="z-chat-input flex-shrink-0 backdrop-blur-xl bg-white/70 border-t border-white/10 px-2 pt-1 pb-safe safe-bottom mb-1 md:mb-1"
     >
-      <div className="flex flex-col gap-1 max-w-4xl mx-auto">
+      <div className="flex flex-col gap-2 max-w-3xl mx-auto">
         {/* File Preview */}
         <AnimatePresence>
           {filePreview && (
@@ -469,9 +469,11 @@ export const MessageInput = ({
         </AnimatePresence>
 
         {/* Input Area */}
-        <div className="flex items-end gap-3">
-          {/* Paperclip Button */}
-          <div className="relative flex-shrink-0">
+        <div className="flex items-end">
+          {/* Input shell with pill-shaped edges */}
+          <div className="flex items-end gap-1.5 flex-1 bg-white/80 backdrop-blur-xl border border-white/40 rounded-3xl px-2.5 py-1.5 shadow-md">
+            {/* Paperclip Button */}
+            <div className="relative flex-shrink-0">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -530,10 +532,10 @@ export const MessageInput = ({
               aria-label="Select document file"
               onChange={(e) => handleFileInputChange(e, 'document')}
             />
-          </div>
+            </div>
 
-          {/* Text Input */}
-          <div className="flex-1 relative">
+            {/* Text Input */}
+            <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
               value={content}
@@ -542,8 +544,8 @@ export const MessageInput = ({
               disabled={disabled || isUploading}
               placeholder={isRecording ? 'Recording audio... (click paperclip to stop)' : placeholder}
               rows={1}
-              className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-white/30 rounded-2xl text-gray-900 placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed overflow-y-auto"
-              style={{ minHeight: '48px', maxHeight: '120px' }}
+              className="w-full px-2 py-1.5 bg-transparent border-0 rounded-2xl text-gray-900 placeholder-gray-500 resize-none focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed overflow-y-auto text-sm"
+              style={{ minHeight: '40px', maxHeight: '100px' }}
               aria-label="Message input"
             />
             {isRecording && (
@@ -560,10 +562,10 @@ export const MessageInput = ({
                 <Loader2 size={16} className="animate-spin text-gray-500" />
               </div>
             )}
-          </div>
+            </div>
 
-          {/* Send Button */}
-          <motion.button
+            {/* Send Button */}
+            <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleSend}
@@ -576,7 +578,8 @@ export const MessageInput = ({
             ) : (
               <Send size={20} className={canSend ? 'opacity-100' : 'opacity-50'} />
             )}
-          </motion.button>
+            </motion.button>
+          </div>
         </div>
 
         {/* Screen reader announcements */}

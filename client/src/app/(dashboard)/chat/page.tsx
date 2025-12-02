@@ -3,7 +3,7 @@ import { ChatLayout } from '@/pages/chat'
 import { ChatWindow } from '@/components/features/ChatWindow'
 
 const ChatPage = () => (
-  <DashboardLayout>
+  <DashboardLayout hideTopNav>
     <ChatLayout>
       <ChatWindow />
     </ChatLayout>
