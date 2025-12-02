@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js'
@@ -183,6 +183,16 @@ export const authService = {
       } = await supabase.auth.getUser()
 
       if (error) {
+        const isInvalidToken = 
+          error.message?.includes('Invalid Refresh Token') ||
+          error.message?.includes('Refresh Token Not Found') ||
+          error.message?.includes('JWT expired')
+
+        if (isInvalidToken) {
+          logger.warn('auth:getCurrentUser', 'Invalid token detected, clearing auth state', error)
+          await supabase.auth.signOut()
+        }
+
         logger.error('auth:getCurrentUser', 'Failed to get current user', error)
         return { success: false, error: error.message }
       }

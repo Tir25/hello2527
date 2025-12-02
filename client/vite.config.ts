@@ -52,7 +52,10 @@ export default defineConfig({
                 },
             },
         },
+        // Copy public directory files to dist
+        copyPublicDir: true,
     },
+    publicDir: 'public',
     optimizeDeps: {
         // Pre-bundle dependencies for faster dev server startup
         include: [

@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { useChatStore } from '@/store/chatStore'
+import { useChat } from '@/hooks/useChat'
 import { useAuthStore } from '@/store/authStore'
+import { useChatStore } from '@/store/chatStore'
 import { WelcomeScreen } from './WelcomeScreen'
 import { ChatHeader } from './ChatHeader'
 import { MessageBubble } from './MessageBubble'
@@ -9,16 +10,24 @@ import { MessageInput } from './MessageInput'
 import { logger } from '@/lib/logger'
 import { toast } from '@/store/toastStore'
 
-// Local alias type for scroll behavior to avoid relying on DOM lib globals
 type ScrollBehaviorType = 'auto' | 'smooth'
 
 export const ChatWindow = () => {
-  const { selectedUser, messages, loading, fetchMessages, sendMessage, subscribeToMessages, unsubscribeFromMessages, setSelectedUser } = useChatStore()
+  const {
+    selectedUser,
+    messages,
+    loading,
+    fetchMessages,
+    sendMessage,
+    subscribeToMessages,
+    unsubscribeFromMessages,
+    setSelectedUser,
+  } = useChat()
   const { user } = useAuthStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
 
-  const NEAR_BOTTOM_THRESHOLD_PX = 160 // Consider user "at bottom" if within this many pixels
+  const NEAR_BOTTOM_THRESHOLD_PX = 160
 
   const scrollToBottom = (behavior: ScrollBehaviorType = 'smooth') => {
     if (messagesEndRef.current) {
@@ -26,41 +35,26 @@ export const ChatWindow = () => {
     }
   }
 
-  // Fetch messages when a user is selected
   useEffect(() => {
     if (selectedUser && user?.id) {
       logger.info('ChatWindow', `Fetching messages for conversation with ${selectedUser.id}`)
-      
-      // PRODUCTION FIX: Unsubscribe before fetching to prevent race conditions
       unsubscribeFromMessages()
-      
-      // Fetch messages
       fetchMessages(selectedUser.id, user.id)
-      
-      // PRODUCTION FIX: Subscribe to real-time updates
-      // Note: Subscription properly handles duplicates, so no delay needed
       subscribeToMessages(user.id)
-      
-      // Cleanup subscription when component unmounts or user changes
       return () => {
         unsubscribeFromMessages()
       }
     } else {
-      // Clear messages when no user is selected
       unsubscribeFromMessages()
       useChatStore.getState().setMessages([])
     }
-    // PRODUCTION FIX: Zustand store functions are stable references, don't include in deps
-    // Only track the actual values that should trigger re-runs
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser?.id, user?.id])
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     scrollToBottom('smooth')
   }, [messages])
 
-  // Keep view pinned near bottom on viewport changes (e.g., keyboard show/hide)
   useEffect(() => {
     const container = messagesContainerRef.current
     if (!container) return
@@ -77,7 +71,6 @@ export const ChatWindow = () => {
     }
 
     const visualViewport = window.visualViewport
-
     visualViewport?.addEventListener('resize', handleViewportChange)
     visualViewport?.addEventListener('scroll', handleViewportChange)
 
@@ -101,7 +94,6 @@ export const ChatWindow = () => {
     const result = await sendMessage(content, selectedUser.id, user.id)
     if (!result.success) {
       logger.error('ChatWindow', 'Failed to send message', result.error)
-      // PRODUCTION FIX: Show user-friendly error toast notification
       toast.error(result.error || 'Failed to send message. Please try again.')
     }
   }
@@ -110,27 +102,18 @@ export const ChatWindow = () => {
     setSelectedUser(null)
   }
 
-  // Show welcome screen if no user is selected
   if (!selectedUser) {
     return <WelcomeScreen />
   }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Chat Header */}
-      <ChatHeader 
-        selectedUser={selectedUser} 
-        onBack={handleBack}
-        showBackButton={true}
-      />
+      <ChatHeader selectedUser={selectedUser} onBack={handleBack} showBackButton={true} />
 
-      {/* Messages List */}
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto px-2 py-4 messages-scroll"
-        style={{
-          scrollBehavior: 'smooth',
-        }}
+        style={{ scrollBehavior: 'smooth' }}
       >
         {loading && messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
@@ -154,24 +137,15 @@ export const ChatWindow = () => {
             {messages.map((message) => {
               const isOwn = message.sender_id === user?.id
               return (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  isOwn={isOwn}
-                />
+                <MessageBubble key={message.id} message={message} isOwn={isOwn} />
               )
             })}
-            {/* Scroll anchor */}
             <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
-      {/* Message Input */}
-      <MessageInput 
-        onSend={handleSendMessage}
-        disabled={loading}
-      />
+      <MessageInput onSend={handleSendMessage} disabled={loading} />
     </div>
   )
 }

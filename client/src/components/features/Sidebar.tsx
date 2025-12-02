@@ -12,38 +12,31 @@ import type { Profile } from '@/lib/services/profile.service'
 
 export const Sidebar = () => {
   const { user, session, profile, profileLoading } = useAuthStore()
-  const { 
-    selectedUser, 
+  const {
+    selectedUser,
     setSelectedUser,
-    // Conversations (users with chat history)
     conversations,
     conversationsLoading,
     conversationsError,
     fetchConversations,
-    // Search (global user search)
     searchResults,
     searchLoading,
     isSearching,
     searchNewUsers,
     clearSearch,
   } = useChatStore()
-  
+
   const [searchQuery, setSearchQuery] = useState('')
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Fetch conversations on mount and when user/session changes
   useEffect(() => {
-    // Only attempt to load conversations when we have an authenticated session
     if (!session || !user?.id) {
       return
     }
-
     fetchConversations()
     logger.info('Sidebar:mount', 'Fetching conversations for authenticated user')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, user?.id])
+  }, [session, user?.id, fetchConversations])
 
-  // Cleanup search timeout on unmount
   useEffect(() => {
     return () => {
       if (searchTimeoutRef.current) {
@@ -52,52 +45,42 @@ export const Sidebar = () => {
     }
   }, [])
 
-  // Handle search input change with debounce
   const handleSearchChange = (value: string) => {
     setSearchQuery(value)
-    
-    // Clear any pending search
+
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
-    
+
     if (value.trim() && user?.id) {
-      // Debounce the search
       searchTimeoutRef.current = setTimeout(() => {
         searchNewUsers(value, user.id)
       }, 300)
     } else if (!value.trim()) {
-      // Clear search immediately when input is empty
       clearSearch()
     }
   }
 
-  // Handle user selection
   const handleUserClick = (clickedUser: Profile) => {
     setSelectedUser(clickedUser)
     logger.info('Sidebar:handleUserClick', `Selected user: ${clickedUser.id}`)
-    
-    // Clear search after selecting a user from search results
-    // This returns to the conversations view
+
     if (isSearching) {
       setSearchQuery('')
       clearSearch()
     }
   }
 
-  // Get display name for current user
   const displayName =
     profile?.full_name || profile?.username || user?.email?.split('@')[0] || 'User'
 
-  // Determine which list to show
   const showSearchResults = searchQuery.trim().length > 0
   const displayList = showSearchResults ? searchResults : conversations
   const isLoading = showSearchResults ? searchLoading : conversationsLoading
   const error = showSearchResults ? null : conversationsError
 
   return (
-    <aside className="w-[400px] flex-shrink-0 backdrop-blur-xl bg-white/70 border-r border-white/20 flex flex-col shadow-lg">
-      {/* Sidebar Header */}
+    <aside className="w-full sm:w-[320px] md:w-[400px] flex-shrink-0 backdrop-blur-xl bg-white/70 border-r border-white/20 flex flex-col shadow-lg">
       <div className="p-4 border-b border-white/20">
         <motion.h1
           initial={{ opacity: 0, x: -20 }}
@@ -107,7 +90,6 @@ export const Sidebar = () => {
           He'loo
         </motion.h1>
 
-        {/* User Profile Info */}
         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/50 backdrop-blur-sm border border-white/30">
           <Avatar profile={profile} loading={profileLoading} size="md" />
           <div className="flex-1 min-w-0">
@@ -126,15 +108,13 @@ export const Sidebar = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
       <div className="p-4 border-b border-white/20">
-        <SearchBar 
-          value={searchQuery} 
+        <SearchBar
+          value={searchQuery}
           onChange={handleSearchChange}
           placeholder="Search for new friends..."
         />
-        
-        {/* Search mode indicator */}
+
         <AnimatePresence>
           {showSearchResults && (
             <motion.div
@@ -144,9 +124,7 @@ export const Sidebar = () => {
               className="flex items-center gap-2 mt-2 px-2"
             >
               <Users size={14} className="text-purple-500" />
-              <span className="text-xs text-purple-600 font-medium">
-                Global Search
-              </span>
+              <span className="text-xs text-purple-600 font-medium">Global Search</span>
               <button
                 onClick={() => {
                   setSearchQuery('')
@@ -161,10 +139,8 @@ export const Sidebar = () => {
         </AnimatePresence>
       </div>
 
-      {/* User List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2 sidebar-scroll">
         {isLoading ? (
-          // Loading skeleton
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
               <div
@@ -180,46 +156,32 @@ export const Sidebar = () => {
             ))}
           </div>
         ) : error ? (
-          // Error state
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <p className="text-sm text-red-500 mb-2">{error}</p>
-            <Button
-              variant="secondary"
-              onClick={() => fetchConversations()}
-              className="text-xs"
-            >
+            <Button variant="secondary" onClick={() => fetchConversations()} className="text-xs">
               Retry
             </Button>
           </div>
         ) : displayList.length === 0 ? (
-          // Empty states - different for search vs conversations
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-12 text-center px-4"
           >
             {showSearchResults ? (
-              // No search results
               <>
                 <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mb-4">
                   <Search size={28} className="text-purple-400" />
                 </div>
-                <p className="text-sm font-medium text-gray-700 mb-1">
-                  No users found
-                </p>
-                <p className="text-xs text-gray-500">
-                  Try a different search term
-                </p>
+                <p className="text-sm font-medium text-gray-700 mb-1">No users found</p>
+                <p className="text-xs text-gray-500">Try a different search term</p>
               </>
             ) : (
-              // No conversations yet (new account)
               <>
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-cyan-100 flex items-center justify-center mb-4">
                   <MessageCircle size={36} className="text-purple-500" />
                 </div>
-                <p className="text-base font-semibold text-gray-800 mb-2">
-                  No chats yet
-                </p>
+                <p className="text-base font-semibold text-gray-800 mb-2">No chats yet</p>
                 <p className="text-sm text-gray-500 leading-relaxed">
                   Search for a friend above to start your first conversation!
                 </p>
@@ -235,44 +197,45 @@ export const Sidebar = () => {
             )}
           </motion.div>
         ) : (
-          // User list
           <div className="space-y-2">
             <AnimatePresence mode="popLayout">
               {displayList.map((listUser) => {
                 const lastMessage =
                   'last_message' in listUser
-                    ? (listUser as import('@/services/userService').ConversationProfile).last_message
+                    ? (listUser as import('@/lib/services/user.service').ConversationProfile)
+                        .last_message
                     : undefined
 
                 const lastMessageTime =
                   'last_message_time' in listUser
-                    ? (listUser as import('@/services/userService').ConversationProfile).last_message_time
+                    ? (listUser as import('@/lib/services/user.service').ConversationProfile)
+                        .last_message_time
                     : undefined
 
                 const unreadCount =
                   'unread_count' in listUser
-                    ? (listUser as import('@/services/userService').ConversationProfile).unread_count
+                    ? (listUser as import('@/lib/services/user.service').ConversationProfile)
+                        .unread_count
                     : undefined
 
                 return (
-                <motion.div
-                  key={listUser.id}
-                  layout
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <UserItem
-                    user={listUser}
-                    isSelected={selectedUser?.id === listUser.id}
-                    onClick={() => handleUserClick(listUser)}
-                    // Pass conversation metadata if available (for showing last message preview)
-                    lastMessage={lastMessage}
-                    lastMessageTime={lastMessageTime}
-                    unreadCount={unreadCount}
-                  />
-                </motion.div>
+                  <motion.div
+                    key={listUser.id}
+                    layout
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <UserItem
+                      user={listUser}
+                      isSelected={selectedUser?.id === listUser.id}
+                      onClick={() => handleUserClick(listUser)}
+                      lastMessage={lastMessage}
+                      lastMessageTime={lastMessageTime}
+                      unreadCount={unreadCount}
+                    />
+                  </motion.div>
                 )
               })}
             </AnimatePresence>
@@ -282,3 +245,4 @@ export const Sidebar = () => {
     </aside>
   )
 }
+

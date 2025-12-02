@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, clearInvalidAuthTokens } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { profileService } from '@/lib/services/profile.service'
 import { logger } from '@/lib/logger'
@@ -47,6 +47,20 @@ export const useAuthListener = () => {
       }
     }
 
+    const isInvalidRefreshTokenError = (error: unknown): boolean => {
+      if (error && typeof error === 'object') {
+        const err = error as { message?: string; status?: number; name?: string }
+        return (
+          err.message?.includes('Invalid Refresh Token') ||
+          err.message?.includes('Refresh Token Not Found') ||
+          err.message?.includes('JWT expired') ||
+          err.name === 'AuthApiError' ||
+          err.status === 400
+        )
+      }
+      return false
+    }
+
     // Get initial session
     const getInitialSession = async () => {
       try {
@@ -56,6 +70,16 @@ export const useAuthListener = () => {
         } = await supabase.auth.getSession()
 
         if (error) {
+          if (isInvalidRefreshTokenError(error)) {
+            logger.warn('auth:listener', 'Invalid refresh token detected, clearing auth state', error)
+            clearInvalidAuthTokens()
+            setUser(null)
+            setSession(null)
+            setProfile(null)
+            clearError()
+            setLoading(false)
+            return
+          }
           logger.error('auth:listener', 'Failed to get initial session', error)
           setError(error.message || 'Failed to load session')
           setLoading(false)
@@ -66,16 +90,25 @@ export const useAuthListener = () => {
         const currentUser = session?.user ?? null
         setUser(currentUser)
         setLoading(false)
-        clearError() // Clear any previous errors on successful session load
+        clearError()
         logger.info('auth:listener', `Initial session loaded. Has session: ${!!session}`)
         
-        // Fetch profile if user exists and mark initial session as loaded
         if (currentUser?.id) {
           initialUserId = currentUser.id
           initialSessionLoaded = true
           fetchUserProfile(currentUser.id)
         }
       } catch (error) {
+        if (isInvalidRefreshTokenError(error)) {
+          logger.warn('auth:listener', 'Invalid refresh token in catch block, clearing auth state', error)
+          clearInvalidAuthTokens()
+          setUser(null)
+          setSession(null)
+          setProfile(null)
+          clearError()
+          setLoading(false)
+          return
+        }
         logger.error('auth:listener', 'Failed to get initial session', error)
         setError('An unexpected error occurred while loading session')
         setLoading(false)
@@ -87,8 +120,22 @@ export const useAuthListener = () => {
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       logger.info('auth:listener', `Auth state changed: ${event}`)
+
+      // Handle token refresh failures
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        logger.warn('auth:listener', 'Token refresh failed - session is null, clearing invalid tokens')
+        clearInvalidAuthTokens()
+        setUser(null)
+        setSession(null)
+        setProfile(null)
+        clearError()
+        setLoading(false)
+        initialSessionLoaded = false
+        initialUserId = null
+        return
+      }
 
       // Skip profile fetch for INITIAL_SESSION if we already fetched during getInitialSession
       const isInitialSessionEvent = event === 'INITIAL_SESSION'
@@ -98,17 +145,36 @@ export const useAuthListener = () => {
 
       // Handle different auth events
       switch (event) {
-        case 'SIGNED_IN':
-        case 'TOKEN_REFRESHED': {
-          // Clear errors on successful auth events
+        case 'SIGNED_IN': {
           clearError()
           setSession(session)
           const signedInUser = session?.user ?? null
           setUser(signedInUser)
           setLoading(false)
-          // Fetch profile when user signs in (always fetch on sign in to get latest data)
           if (signedInUser?.id && !shouldSkipProfileFetch) {
             fetchUserProfile(signedInUser.id)
+          }
+          break
+        }
+
+        case 'TOKEN_REFRESHED': {
+          if (session) {
+            clearError()
+            setSession(session)
+            const refreshedUser = session.user ?? null
+            setUser(refreshedUser)
+            setLoading(false)
+            if (refreshedUser?.id && !shouldSkipProfileFetch) {
+              fetchUserProfile(refreshedUser.id)
+            }
+          } else {
+            logger.warn('auth:listener', 'Token refresh returned null session')
+            clearInvalidAuthTokens()
+            setUser(null)
+            setSession(null)
+            setProfile(null)
+            clearError()
+            setLoading(false)
           }
           break
         }

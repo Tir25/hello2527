@@ -32,15 +32,15 @@ export const SearchBar = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
-            'w-full pl-12 pr-4 py-3 rounded-full', // Pill shape
+            'w-full pl-12 pr-4 py-3 rounded-full',
             'bg-white/40 backdrop-blur-md',
             'border border-white/30',
             'text-gray-800 placeholder:text-gray-500',
-            'focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 focus:ring-offset-transparent', // Focus glow
+            'focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 focus:ring-offset-transparent',
             'focus:border-purple-400/50',
             'focus:bg-white/60',
             'transition-all duration-300',
-            'shadow-sm hover:shadow-md focus:shadow-lg focus:shadow-purple-500/30' // Enhanced focus glow
+            'shadow-sm hover:shadow-md focus:shadow-lg focus:shadow-purple-500/30'
           )}
         />
       </div>

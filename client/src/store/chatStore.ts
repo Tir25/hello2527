@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import type { Profile } from '@/lib/services/profile.service'
 import type { DatabaseMessage } from '@/types'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { toast } from '@/store/toastStore'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { getConversations, searchUsers, type ConversationProfile } from '@/services/userService'
+import { userService, type ConversationProfile } from '@/lib/services/user.service'
 
 interface ChatState {
   // User selection
@@ -151,7 +151,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     try {
       set({ conversationsLoading: true, conversationsError: null })
       
-      const result = await getConversations()
+      const result = await userService.getConversations()
 
       if (result.success && result.data) {
         set({ 
@@ -187,7 +187,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     try {
       set({ searchLoading: true, searchError: null, isSearching: true })
       
-      const result = await searchUsers(query, currentUserId)
+      const result = await userService.searchUsers(query, currentUserId)
 
       if (result.success && result.data) {
         set({ 

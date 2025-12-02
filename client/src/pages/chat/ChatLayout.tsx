@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { Sidebar } from '@/components/chat/Sidebar/Sidebar'
+import { Sidebar } from '@/components/features/Sidebar'
 import { NavigationOrb } from '@/components/ui/NavigationOrb'
 import { useChatStore } from '@/store/chatStore'
 

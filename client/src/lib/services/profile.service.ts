@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 

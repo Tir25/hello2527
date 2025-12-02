@@ -10,7 +10,8 @@ interface ChatHeaderProps {
 }
 
 export const ChatHeader = ({ selectedUser, onBack, showBackButton = false }: ChatHeaderProps) => {
-  const displayName = selectedUser.full_name || selectedUser.username || selectedUser.email || 'Unknown User'
+  const displayName =
+    selectedUser.full_name || selectedUser.username || selectedUser.email || 'Unknown User'
 
   return (
     <motion.header
@@ -19,7 +20,6 @@ export const ChatHeader = ({ selectedUser, onBack, showBackButton = false }: Cha
       className="sticky top-0 z-chat-header backdrop-blur-xl bg-white/70 border-b border-white/20 shadow-sm"
     >
       <div className="flex items-center gap-4 px-4 py-3">
-        {/* Back Button (Mobile Only) */}
         {showBackButton && onBack && (
           <motion.button
             whileHover={{ scale: 1.1 }}
@@ -32,10 +32,8 @@ export const ChatHeader = ({ selectedUser, onBack, showBackButton = false }: Cha
           </motion.button>
         )}
 
-        {/* User Avatar */}
         <Avatar profile={selectedUser} size="md" />
 
-        {/* User Info */}
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-semibold text-gray-900 truncate">{displayName}</h2>
           {selectedUser.status && (
