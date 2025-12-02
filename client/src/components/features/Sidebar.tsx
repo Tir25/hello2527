@@ -35,7 +35,10 @@ export const Sidebar = () => {
     }
     fetchConversations()
     logger.info('Sidebar:mount', 'Fetching conversations for authenticated user')
-  }, [session, user?.id, fetchConversations])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, user?.id])
+  // Note: fetchConversations is intentionally excluded from dependencies
+  // It's a stable function from Zustand store and doesn't need to trigger re-runs
 
   useEffect(() => {
     return () => {
@@ -80,8 +83,11 @@ export const Sidebar = () => {
   const error = showSearchResults ? null : conversationsError
 
   return (
-    <aside className="w-full sm:w-[320px] md:w-[400px] flex-shrink-0 backdrop-blur-xl bg-white/70 border-r border-white/20 flex flex-col shadow-lg">
-      <div className="p-4 border-b border-white/20">
+    <section
+      className="h-full w-full sm:w-[320px] md:w-[400px] flex-shrink-0 backdrop-blur-xl bg-white/70 border-r border-white/20 flex flex-col shadow-lg"
+      aria-label="Conversation panel"
+    >
+      <header className="p-4 border-b border-white/20">
         <motion.h1
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -106,7 +112,7 @@ export const Sidebar = () => {
             )}
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="p-4 border-b border-white/20">
         <SearchBar
@@ -126,6 +132,7 @@ export const Sidebar = () => {
               <Users size={14} className="text-purple-500" />
               <span className="text-xs text-purple-600 font-medium">Global Search</span>
               <button
+                type="button"
                 onClick={() => {
                   setSearchQuery('')
                   clearSearch()
@@ -139,7 +146,7 @@ export const Sidebar = () => {
         </AnimatePresence>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 sidebar-scroll">
+      <div className="flex-1 overflow-y-auto p-4 sidebar-scroll">
         {isLoading ? (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
@@ -197,52 +204,55 @@ export const Sidebar = () => {
             )}
           </motion.div>
         ) : (
-          <div className="space-y-2">
-            <AnimatePresence mode="popLayout">
-              {displayList.map((listUser) => {
-                const lastMessage =
-                  'last_message' in listUser
-                    ? (listUser as import('@/lib/services/user.service').ConversationProfile)
-                        .last_message
-                    : undefined
+          <nav aria-label="Conversation list">
+            <ul className="space-y-2">
+              <AnimatePresence mode="popLayout">
+                {displayList.map((listUser) => {
+                  const lastMessage =
+                    'last_message' in listUser
+                      ? (listUser as import('@/lib/services/user.service').ConversationProfile)
+                          .last_message
+                      : undefined
 
-                const lastMessageTime =
-                  'last_message_time' in listUser
-                    ? (listUser as import('@/lib/services/user.service').ConversationProfile)
-                        .last_message_time
-                    : undefined
+                  const lastMessageTime =
+                    'last_message_time' in listUser
+                      ? (listUser as import('@/lib/services/user.service').ConversationProfile)
+                          .last_message_time
+                      : undefined
 
-                const unreadCount =
-                  'unread_count' in listUser
-                    ? (listUser as import('@/lib/services/user.service').ConversationProfile)
-                        .unread_count
-                    : undefined
+                  const unreadCount =
+                    'unread_count' in listUser
+                      ? (listUser as import('@/lib/services/user.service').ConversationProfile)
+                          .unread_count
+                      : undefined
 
-                return (
-                  <motion.div
-                    key={listUser.id}
-                    layout
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <UserItem
-                      user={listUser}
-                      isSelected={selectedUser?.id === listUser.id}
-                      onClick={() => handleUserClick(listUser)}
-                      lastMessage={lastMessage}
-                      lastMessageTime={lastMessageTime}
-                      unreadCount={unreadCount}
-                    />
-                  </motion.div>
-                )
-              })}
-            </AnimatePresence>
-          </div>
+                  return (
+                    <motion.li
+                      key={listUser.id}
+                      layout
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.2 }}
+                      className="list-none"
+                    >
+                      <UserItem
+                        user={listUser}
+                        isSelected={selectedUser?.id === listUser.id}
+                        onClick={() => handleUserClick(listUser)}
+                        lastMessage={lastMessage}
+                        lastMessageTime={lastMessageTime}
+                        unreadCount={unreadCount}
+                      />
+                    </motion.li>
+                  )
+                })}
+              </AnimatePresence>
+            </ul>
+          </nav>
         )}
       </div>
-    </aside>
+    </section>
   )
 }
 

@@ -18,11 +18,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 relative overflow-hidden">
+      <div className="h-[100dvh] w-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 relative overflow-hidden">
         {/* Subtle background orbs */}
         <div className="absolute top-20 left-10 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-200/30 rounded-full blur-3xl pointer-events-none" />
-        
+
         {/* Glass spinner */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -37,13 +37,13 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative">
+    <div className="h-[100dvh] w-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative overflow-hidden flex flex-col">
       {/* Subtle background orbs */}
       <div className="absolute top-20 left-10 w-72 h-72 bg-purple-200/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-200/20 rounded-full blur-3xl pointer-events-none" />
 
       {/* Navigation Bar */}
-      <nav className="relative z-50 backdrop-blur-xl bg-white/70 border-b border-white/20 shadow-sm">
+      <nav className="relative z-50 flex-none backdrop-blur-xl bg-white/70 border-b border-white/20 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -80,9 +80,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="relative z-10 pt-8 pb-20 md:pb-16" role="main">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Main Content - rigid frame, no page scrolling */}
+      <main className="relative z-10 flex-1 overflow-hidden" role="main">
+        <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>

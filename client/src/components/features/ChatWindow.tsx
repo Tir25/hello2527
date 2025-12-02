@@ -88,10 +88,14 @@ export const ChatWindow = () => {
     }
   }, [])
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (
+    content: string,
+    mediaUrl?: string,
+    mediaType?: 'image' | 'video' | 'audio' | 'document'
+  ) => {
     if (!selectedUser || !user?.id) return
 
-    const result = await sendMessage(content, selectedUser.id, user.id)
+    const result = await sendMessage(content, selectedUser.id, user.id, mediaUrl, mediaType)
     if (!result.success) {
       logger.error('ChatWindow', 'Failed to send message', result.error)
       toast.error(result.error || 'Failed to send message. Please try again.')
@@ -108,11 +112,15 @@ export const ChatWindow = () => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <ChatHeader selectedUser={selectedUser} onBack={handleBack} showBackButton={true} />
+      {/* Header - fixed height */}
+      <div className="flex-none">
+        <ChatHeader selectedUser={selectedUser} onBack={handleBack} showBackButton={true} />
+      </div>
 
+      {/* Message list - only scrollable area */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-2 py-4 messages-scroll"
+        className="flex-1 overflow-y-auto overscroll-none px-2 py-4 messages-scroll"
         style={{ scrollBehavior: 'smooth' }}
       >
         {loading && messages.length === 0 ? (
@@ -145,7 +153,14 @@ export const ChatWindow = () => {
         )}
       </div>
 
-      <MessageInput onSend={handleSendMessage} disabled={loading} />
+      {/* Input - bottom fixed flex item, not sticky */}
+      <div className="flex-none">
+        <MessageInput
+          onSend={handleSendMessage}
+          disabled={loading}
+          receiverId={selectedUser.id}
+        />
+      </div>
     </div>
   )
 }

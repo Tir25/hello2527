@@ -5,6 +5,8 @@ export interface DatabaseMessage {
   content: string
   created_at: string
   is_read: boolean
+  media_url?: string | null
+  media_type?: 'image' | 'video' | 'audio' | 'document' | null
 }
 
 export interface DatabaseProfile {

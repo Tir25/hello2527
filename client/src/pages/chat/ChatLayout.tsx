@@ -11,16 +11,14 @@ export const ChatLayout = ({ children }: ChatLayoutProps) => {
   const { selectedUser } = useChatStore()
 
   return (
-    <div className="h-[100dvh] w-screen flex overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100 relative">
-      {/* Subtle background orbs */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-purple-200/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-200/20 rounded-full blur-3xl pointer-events-none" />
-
+    <div className="h-full w-full flex overflow-hidden relative">
       {/* Left Pane - Sidebar */}
       <aside
         className={`${
           selectedUser ? 'hidden md:flex' : 'flex'
         } w-full md:w-[400px] flex-shrink-0 flex-col overflow-hidden`}
+        aria-label="Conversation sidebar"
+        role="complementary"
       >
         <Sidebar />
       </aside>
@@ -31,6 +29,7 @@ export const ChatLayout = ({ children }: ChatLayoutProps) => {
           !selectedUser ? 'hidden md:flex' : 'flex'
         } flex-1 flex flex-col overflow-hidden`}
         role="main"
+        aria-label="Active chat"
       >
         {children}
       </main>

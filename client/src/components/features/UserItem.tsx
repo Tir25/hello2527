@@ -45,30 +45,43 @@ export const UserItem = ({
   const hasUnread = unreadCount > 0
   const timeDisplay = formatMessageTime(lastMessageTime)
 
+  const unreadAriaLabel = hasUnread
+    ? `${unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`
+    : 'No unread messages'
+
   return (
-    <motion.div
+    <motion.button
+      type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-3 p-3 rounded-xl cursor-pointer',
+        'w-full text-left flex items-center gap-3 p-3 rounded-xl cursor-pointer focus:outline-none',
         'transition-all duration-200',
         isSelected
           ? 'bg-white/70 backdrop-blur-lg shadow-lg border-2 border-purple-300/40 ring-2 ring-purple-200/30'
-          : 'bg-white/30 backdrop-blur-sm border border-white/20 hover:bg-white/50 hover:shadow-md hover:border-white/30'
+          : 'bg-white/30 backdrop-blur-sm border border-white/20 hover:bg-white/50 hover:shadow-md hover:border-white/30',
+        'focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent'
       )}
       whileHover={isSelected ? { scale: 1.01 } : { scale: 1.02, x: 4 }}
       whileTap={{ scale: 0.98 }}
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2 }}
+      aria-pressed={isSelected}
     >
       <div className="relative">
         <Avatar profile={user} size="md" />
+        <span className="sr-only">
+          Status: {user.status ? user.status : 'No status message set'}
+        </span>
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <p
-            className={cn('text-sm font-semibold text-gray-800 truncate', hasUnread && 'text-gray-900')}
+            className={cn(
+              'text-sm font-semibold text-gray-800 truncate',
+              hasUnread && 'text-gray-900'
+            )}
           >
             {displayName}
           </p>
@@ -85,18 +98,24 @@ export const UserItem = ({
         </div>
         <div className="flex items-center justify-between gap-2">
           <p
-            className={cn('text-xs truncate', hasUnread ? 'text-gray-700 font-medium' : 'text-gray-500')}
+            className={cn(
+              'text-xs truncate',
+              hasUnread ? 'text-gray-700 font-medium' : 'text-gray-500'
+            )}
           >
             {subtitle}
           </p>
           {hasUnread && (
-            <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white text-[10px] font-bold flex items-center justify-center">
+            <span
+              className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white text-[10px] font-bold flex items-center justify-center"
+              aria-label={unreadAriaLabel}
+            >
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </div>
+        <span className="sr-only">{unreadAriaLabel}</span>
       </div>
-    </motion.div>
+    </motion.button>
   )
 }
-

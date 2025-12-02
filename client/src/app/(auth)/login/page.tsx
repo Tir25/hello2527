@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -11,24 +11,20 @@ import { logger } from '@/lib/logger'
 import { authService } from '@/lib/services/auth.service'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
+import { AuthLayout } from '@/components/layout/AuthLayout'
+import FormAlert from '@/components/ui/FormAlert'
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showResendConfirmation, setShowResendConfirmation] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendMessage, setResendMessage] = useState<string | null>(null)
-  const [userEmail, setUserEmail] = useState<string>('')
+  const [userEmail, setUserEmail] = useState('')
   const navigate = useNavigate()
   const { login } = useAuth()
   const { loading: authLoading, error: globalError, clearError } = useAuthStore()
 
-  // Clear global error when component mounts or when user starts typing
-  useEffect(() => {
-    return () => {
-      // Clear error when component unmounts
-      clearError()
-    }
-  }, [clearError])
+  useEffect(() => () => clearError(), [clearError])
 
   const {
     register,
@@ -40,7 +36,6 @@ const LoginPage = () => {
   })
 
   const onSubmit = async (data: LoginFormData) => {
-    // Clear global error when form is submitted
     clearError()
     setShowResendConfirmation(false)
     setResendMessage(null)
@@ -52,30 +47,28 @@ const LoginPage = () => {
       })
 
       if (!result.success) {
-        // Check if error is email confirmation
-        const isEmailNotConfirmed =
-          result.error?.toLowerCase().includes('email not confirmed') ||
-          result.error?.toLowerCase().includes('email_not_confirmed')
+        const normalizedError = result.error?.toLowerCase() ?? ''
+        const requiresConfirmation =
+          normalizedError.includes('email not confirmed') ||
+          normalizedError.includes('email_not_confirmed')
 
-        if (isEmailNotConfirmed) {
-          // Store email for resend functionality
+        if (requiresConfirmation) {
           setUserEmail(data.email)
           setShowResendConfirmation(true)
           setError('root', {
-            message: 'Please confirm your email before logging in. Check your inbox for a confirmation link.',
+            message: 'Please confirm your email before logging in.',
           })
         } else {
           setError('root', {
             message: result.error || 'Failed to sign in',
           })
         }
+
         logger.error('login:onSubmit', 'Login failed', result.error)
         return
       }
 
       logger.info('login:onSubmit', 'Login successful')
-      // The auth listener will pick up the session change and handle navigation
-      // But we can also navigate immediately for better UX
       navigate('/')
     } catch (error) {
       logger.error('login:onSubmit', 'Unexpected login error', error)
@@ -110,198 +103,118 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-violet-900 via-purple-900 to-cyan-900">
-        <div className="absolute inset-0 bg-white/5 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent)]" />
-      </div>
-
-      {/* Floating Blobs Animation */}
-      <motion.div
-        className="absolute top-20 left-10 w-72 h-72 bg-purple-500/30 rounded-full blur-3xl"
-        animate={{
-          x: [0, 100, 0],
-          y: [0, 50, 0],
-          scale: [1, 1.2, 1],
-        }}
-        transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-      />
-      <motion.div
-        className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-500/30 rounded-full blur-3xl"
-        animate={{
-          x: [0, -80, 0],
-          y: [0, -60, 0],
-          scale: [1, 1.3, 1],
-        }}
-        transition={{
-          duration: 25,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-      />
-
-      {/* Glass Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+    <AuthLayout title="Welcome back" subtitle="Sign in to continue the conversation">
+      <motion.form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-5 sm:space-y-6"
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-md"
+        transition={{ duration: 0.35 }}
       >
-        <div className="backdrop-blur-xl bg-white/10 border border-white/10 rounded-2xl shadow-xl p-6 sm:p-8 md:p-10">
-          {/* Header */}
-          <div className="text-center mb-6 sm:mb-8">
-            <motion.h1
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 }}
-              className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2 bg-gradient-to-r from-violet-200 via-purple-200 to-cyan-200 bg-clip-text text-transparent"
-            >
-              He'loo
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-white/80 text-base sm:text-lg"
-            >
-              Welcome back! Sign in to continue
-            </motion.p>
-          </div>
+        {globalError && <FormAlert variant="error" message={globalError} />}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 sm:space-y-6">
-            {/* Display global error from Zustand store */}
-            {globalError && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-xl bg-red-500/20 border border-red-400/50 text-red-200 text-sm"
-              >
-                {globalError}
-              </motion.div>
-            )}
-            {/* Display form validation errors */}
-            {errors.root && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-xl bg-red-500/20 border border-red-400/50 text-red-200 text-sm space-y-2"
-              >
-                <p>{errors.root.message}</p>
-                {showResendConfirmation && (
-                  <div className="mt-3 pt-3 border-t border-red-400/30">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={handleResendConfirmation}
-                      isLoading={resendLoading}
-                      className="w-full text-sm text-cyan-300 hover:text-cyan-200 border border-cyan-400/50 hover:border-cyan-400/70"
-                    >
-                      Resend Confirmation Email
-                    </Button>
-                    {resendMessage && (
-                      <p className={`mt-2 text-xs ${resendMessage.includes('sent')
-                          ? 'text-green-300'
-                          : 'text-red-300'
-                        }`}>
-                        {resendMessage}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Input
-                id="email"
-                type="email"
-                label="Email"
-                placeholder="Enter your email"
-                icon={Mail}
-                iconPosition="left"
-                error={errors.email?.message}
-                {...register('email')}
+        {errors.root && (
+          <FormAlert variant="error" message={errors.root.message}>
+            {showResendConfirmation && (
+              <ResendConfirmationNotice
+                onResend={handleResendConfirmation}
+                isLoading={resendLoading}
+                message={resendMessage}
               />
-            </motion.div>
+            )}
+          </FormAlert>
+        )}
 
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                label="Password"
-                placeholder="Enter your password"
-                icon={Lock}
-                iconPosition="left"
-                error={errors.password?.message}
-                rightAction={
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-white/60 hover:text-white transition-colors"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} />
-                    ) : (
-                      <Eye size={20} />
-                    )}
-                  </button>
-                }
-                {...register('password')}
-              />
-            </motion.div>
+        <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+          <Input
+            id="email"
+            type="email"
+            label="Email"
+            placeholder="Enter your email"
+            icon={Mail}
+            iconPosition="left"
+            error={errors.email?.message}
+            {...register('email')}
+          />
+        </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Button
-                type="submit"
-                variant="primary"
-                isLoading={authLoading}
-                className="w-full"
+        <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
+          <Input
+            id="password"
+            type={showPassword ? 'text' : 'password'}
+            label="Password"
+            placeholder="Enter your password"
+            icon={Lock}
+            iconPosition="left"
+            error={errors.password?.message}
+            rightAction={
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="text-white/60 hover:text-white transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                Sign In
-              </Button>
-            </motion.div>
-          </form>
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            }
+            {...register('password')}
+          />
+        </motion.div>
 
-          {/* Sign Up Link */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="mt-5 sm:mt-6 text-center"
-          >
-            <p className="text-white/70 text-sm">
-              Don't have an account?{' '}
-              <Link
-                to="/signup"
-                className="text-cyan-300 hover:text-cyan-200 font-semibold transition-colors underline underline-offset-2"
-              >
-                Sign Up
-              </Link>
-            </p>
-          </motion.div>
-        </div>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Button type="submit" variant="primary" isLoading={authLoading} className="w-full">
+            Sign In
+          </Button>
+        </motion.div>
+      </motion.form>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="mt-6 text-center text-sm text-white/70"
+      >
+        Don't have an account?{' '}
+        <Link
+          to="/register"
+          className="font-semibold text-cyan-200 hover:text-cyan-100 underline underline-offset-2 transition-colors"
+        >
+          Create one
+        </Link>
       </motion.div>
-    </div>
+    </AuthLayout>
   )
 }
+
+const ResendConfirmationNotice = ({
+  onResend,
+  isLoading,
+  message,
+}: {
+  onResend: () => Promise<void> | void
+  isLoading: boolean
+  message: string | null
+}) => (
+  <div className="mt-3 space-y-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-xs text-white/90">
+    <p className="text-sm text-cyan-100">
+      Your email is not confirmed yet. Tap below and follow the link in your inbox to activate your account.
+    </p>
+    <Button
+      type="button"
+      variant="ghost"
+      onClick={onResend}
+      isLoading={isLoading}
+      className="w-full border border-cyan-300/40 text-cyan-50"
+    >
+      Resend confirmation email
+    </Button>
+    {message && (
+      <p className={`text-xs ${message.includes('sent') ? 'text-emerald-200' : 'text-red-200'}`}>
+        {message}
+      </p>
+    )}
+  </div>
+)
 
 export default LoginPage
 

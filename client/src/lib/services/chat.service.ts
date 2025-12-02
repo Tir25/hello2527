@@ -2,11 +2,15 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
 import type { DatabaseMessage } from '@/types'
+import { STORAGE } from '@/lib/constants/storage'
+import { MEDIA_PLACEHOLDER } from '@/lib/constants/media'
 
 const sendMessageSchema = z.object({
-  content: z.string().min(1, 'Message cannot be empty').max(5000, 'Message too long'),
+  content: z.string().max(5000, 'Message too long'),
   senderId: z.string().uuid('Invalid sender ID'),
   receiverId: z.string().uuid('Invalid receiver ID'),
+  mediaUrl: z.string().url().optional(),
+  mediaType: z.enum(['image', 'video', 'audio', 'document']).optional(),
 })
 
 const fetchMessagesSchema = z.object({
@@ -20,17 +24,115 @@ export interface ChatServiceResponse<T = unknown> {
   data?: T
 }
 
+export interface MediaUploadResponse {
+  publicUrl: string
+  path: string
+}
+
 export const chatService = {
+  async uploadMedia(
+    file: File,
+    fileType: 'image' | 'video' | 'document' | 'audio'
+  ): Promise<ChatServiceResponse<MediaUploadResponse>> {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        logger.error('chat:uploadMedia', 'User not authenticated')
+        return {
+          success: false,
+          error: 'storage/unauthenticated',
+        }
+      }
+
+      // Skip bucket existence check - let the upload attempt handle it
+      // This avoids permission issues with listBuckets()
+
+      // Generate unique filename using storage path template
+      const fileExt = file.name.split('.').pop() || 'bin'
+      const timestamp = Date.now()
+      const random = Math.random().toString(36).substring(7)
+      const fileName = `${timestamp}-${random}.${fileExt}`
+      const filePath = STORAGE.PATH_TEMPLATE(user.id, fileName)
+
+      logger.info('chat:uploadMedia', 'Starting upload', {
+        type: fileType,
+        size: file.size,
+        path: filePath,
+      })
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE.BUCKET)
+        .upload(filePath, file, {
+          cacheControl: STORAGE.CACHE_CONTROL,
+          upsert: false,
+        })
+
+      if (uploadError) {
+        logger.error('chat:uploadMedia', 'Failed to upload file', {
+          error: uploadError,
+          message: uploadError.message,
+          path: filePath,
+        })
+        return {
+          success: false,
+          error: uploadError.message || 'storage/upload-failed',
+        }
+      }
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(STORAGE.BUCKET).getPublicUrl(filePath)
+
+      if (!publicUrl) {
+        logger.error('chat:uploadMedia', 'Failed to get public URL', { path: filePath })
+        return {
+          success: false,
+          error: 'storage/url-generation-failed',
+        }
+      }
+
+      logger.info('chat:uploadMedia', 'File uploaded successfully', {
+        path: filePath,
+        url: publicUrl,
+        size: file.size,
+        type: fileType,
+      })
+
+      return {
+        success: true,
+        data: {
+          publicUrl,
+          path: filePath,
+        },
+      }
+    } catch (error) {
+      logger.error('chat:uploadMedia', 'Upload media failed', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'An unexpected error occurred during upload',
+      }
+    }
+  },
+
   async sendMessage(
     content: string,
     senderId: string,
-    receiverId: string
+    receiverId: string,
+    mediaUrl?: string,
+    mediaType?: 'image' | 'video' | 'audio' | 'document'
   ): Promise<ChatServiceResponse<DatabaseMessage>> {
     try {
       const validated = sendMessageSchema.parse({
-        content: content.trim(),
+        content: content.trim() || (mediaUrl ? MEDIA_PLACEHOLDER : ''),
         senderId,
         receiverId,
+        mediaUrl,
+        mediaType,
       })
 
       const { data, error } = await supabase
@@ -39,6 +141,8 @@ export const chatService = {
           sender_id: validated.senderId,
           receiver_id: validated.receiverId,
           content: validated.content,
+          media_url: validated.mediaUrl,
+          media_type: validated.mediaType,
         })
         .select()
         .single()

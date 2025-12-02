@@ -6,6 +6,7 @@ import { toast } from '@/store/toastStore'
 import type { DatabaseMessage } from '@/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { MEDIA_PLACEHOLDER } from '@/lib/constants/media'
 
 export const useChat = () => {
   const {
@@ -53,20 +54,34 @@ export const useChat = () => {
   )
 
   const sendMessage = useCallback(
-    async (content: string, receiverId: string, currentUserId: string) => {
+    async (
+      content: string,
+      receiverId: string,
+      currentUserId: string,
+      mediaUrl?: string,
+      mediaType?: 'image' | 'video' | 'audio' | 'document'
+    ) => {
       try {
         const optimisticMessage: DatabaseMessage = {
           id: `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`,
           sender_id: currentUserId,
           receiver_id: receiverId,
-          content: content.trim(),
+          content: content.trim() || (mediaUrl ? MEDIA_PLACEHOLDER : ''),
           created_at: new Date().toISOString(),
           is_read: false,
+          media_url: mediaUrl,
+          media_type: mediaType,
         }
 
         addMessage(optimisticMessage)
 
-        const result = await chatService.sendMessage(content, currentUserId, receiverId)
+        const result = await chatService.sendMessage(
+          content,
+          currentUserId,
+          receiverId,
+          mediaUrl,
+          mediaType
+        )
 
         if (!result.success) {
           const { messages: currentMessages } = useChatStore.getState()

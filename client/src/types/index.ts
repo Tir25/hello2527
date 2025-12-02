@@ -8,6 +8,15 @@ export interface User {
     updatedAt: string
 }
 
+/**
+ * @deprecated This interface is outdated and does not match the current database schema.
+ * Use `DatabaseMessage` from './database.types' instead, which includes:
+ * - media_type: 'image' | 'video' | 'audio' | 'document' | null
+ * - media_url: string | null
+ * 
+ * This interface is kept for backward compatibility only.
+ * It will be removed in a future version.
+ */
 export interface Message {
     id: string
     content: string

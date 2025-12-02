@@ -50,6 +50,11 @@ export default [
         clearInterval: 'readonly',
         File: 'readonly',
         fetch: 'readonly',
+        MouseEvent: 'readonly',
+        Node: 'readonly',
+        MediaRecorder: 'readonly',
+        Blob: 'readonly',
+        React: 'readonly',
       },
     },
     plugins: {
