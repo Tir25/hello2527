@@ -95,7 +95,9 @@ export const MessageInput = ({
         // Use sendBeacon for reliable delivery on page unload
         // Fallback to synchronous emit if beacon is not available
         try {
-          if (navigator.sendBeacon) {
+          const canUseSendBeacon = typeof navigator.sendBeacon === 'function'
+
+          if (canUseSendBeacon) {
             // Note: sendBeacon only works with POST requests, so we'll use sync emit as fallback
             socketService.emitTypingStop(receiverIdRef.current)
           } else {

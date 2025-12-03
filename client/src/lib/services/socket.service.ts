@@ -120,7 +120,11 @@ export const socketService = {
     socketInstance.on('user_typing', (event: UserTypingEvent) => {
       if (userTypingCallback) {
         // LOW FIX #8: Use debug level for frequent typing events
-        logger.debug('socket:user_typing', 'User typing event received', event)
+        logger.debug('socket:user_typing', 'User typing event received', {
+          userId: event.userId,
+          receiverId: event.receiverId,
+          isTyping: event.isTyping,
+        })
         userTypingCallback(event)
       }
     })
