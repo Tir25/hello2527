@@ -35,12 +35,29 @@ interface ChatState {
   // Realtime channel
   channel: RealtimeChannel | null
   
+  // Presence tracking
+  onlineUsers: Set<string> // Set of online user IDs
+  userLastSeen: Map<string, string> // Map of userId -> last_seen timestamp
+  
+  // Typing indicators
+  typingUsers: Set<string> // Set of user IDs who are currently typing
+  
   // Actions
   setSelectedUser: (user: Profile | null) => void
   setUsers: (users: Profile[]) => void
   setMessages: (messages: DatabaseMessage[]) => void
   addMessage: (message: DatabaseMessage) => void
   clearChat: () => void
+  
+  // Presence actions
+  setUserOnline: (userId: string) => void
+  setUserOffline: (userId: string, lastSeen?: string) => void
+  isUserOnline: (userId: string) => boolean
+  getUserLastSeen: (userId: string) => string | null
+  
+  // Typing actions
+  setUserTyping: (userId: string, isTyping: boolean) => void
+  isUserTyping: (userId: string) => boolean
   
   // New actions for WhatsApp-style sidebar
   fetchConversations: () => Promise<void>
@@ -102,6 +119,13 @@ export const useChatStore = create<ChatState>((set, get) => {
   error: null,
   
   channel: null,
+  
+  // Presence state
+  onlineUsers: new Set<string>(),
+  userLastSeen: new Map<string, string>(),
+  
+  // Typing state
+  typingUsers: new Set<string>(),
 
   setSelectedUser: (user: Profile | null) => {
     set({ selectedUser: user })
@@ -405,6 +429,69 @@ export const useChatStore = create<ChatState>((set, get) => {
           set({ channel: null })
         })
     }
+  },
+
+  // Presence actions
+  setUserOnline: (userId: string) => {
+    const { onlineUsers, userLastSeen } = get()
+    const newOnlineUsers = new Set(onlineUsers)
+    newOnlineUsers.add(userId)
+    // Remove from last seen when user comes online
+    const newLastSeen = new Map(userLastSeen)
+    newLastSeen.delete(userId)
+    set({ onlineUsers: newOnlineUsers, userLastSeen: newLastSeen })
+    logger.info('chatStore:setUserOnline', `User ${userId} is now online`)
+  },
+
+  setUserOffline: (userId: string, lastSeen?: string) => {
+    const { onlineUsers, userLastSeen } = get()
+    const newOnlineUsers = new Set(onlineUsers)
+    newOnlineUsers.delete(userId)
+    const newLastSeen = new Map(userLastSeen)
+    if (lastSeen) {
+      newLastSeen.set(userId, lastSeen)
+    }
+    set({ onlineUsers: newOnlineUsers, userLastSeen: newLastSeen })
+    logger.info('chatStore:setUserOffline', `User ${userId} is now offline`, { lastSeen })
+  },
+
+  isUserOnline: (userId: string) => {
+    return get().onlineUsers.has(userId)
+  },
+
+  getUserLastSeen: (userId: string) => {
+    return get().userLastSeen.get(userId) || null
+  },
+
+  // Typing actions
+  setUserTyping: (userId: string, isTyping: boolean) => {
+    const { typingUsers } = get()
+    
+    // MEDIUM FIX #4: Check if state actually changed before updating
+    // This prevents unnecessary re-renders and Set creation
+    const currentlyTyping = typingUsers.has(userId)
+    
+    // If state hasn't changed, don't update (no-op)
+    if (currentlyTyping === isTyping) {
+      return
+    }
+    
+    // Only create new Set if state needs to change
+    const newTypingUsers = new Set(typingUsers)
+    
+    if (isTyping) {
+      newTypingUsers.add(userId)
+    } else {
+      newTypingUsers.delete(userId)
+    }
+    
+    set({ typingUsers: newTypingUsers })
+    // LOW FIX #8: Use debug level instead of info for frequent typing events
+    logger.debug('chatStore:setUserTyping', `User ${userId} ${isTyping ? 'started' : 'stopped'} typing`)
+  },
+
+  isUserTyping: (userId: string) => {
+    return get().typingUsers.has(userId)
   },
   }
 })

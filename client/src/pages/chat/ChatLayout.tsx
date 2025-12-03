@@ -2,6 +2,8 @@ import { type ReactNode } from 'react'
 import { Sidebar } from '@/components/features/Sidebar'
 import { NavigationOrb } from '@/components/ui/NavigationOrb'
 import { useChatStore } from '@/store/chatStore'
+import { usePresence } from '@/hooks/usePresence'
+import { useAuthStore } from '@/store/authStore'
 
 interface ChatLayoutProps {
   children: ReactNode
@@ -9,6 +11,10 @@ interface ChatLayoutProps {
 
 export const ChatLayout = ({ children }: ChatLayoutProps) => {
   const { selectedUser } = useChatStore()
+  const { user } = useAuthStore()
+  
+  // Initialize socket.io presence connection
+  usePresence(user?.id)
 
   return (
     <div className="h-full w-full flex overflow-hidden relative">

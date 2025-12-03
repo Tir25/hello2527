@@ -1,40 +1,68 @@
-import { useCallback, useEffect, useRef } from 'react'
-import { presenceService } from '@/lib/services/presence.service'
+import { useEffect } from 'react'
+import { socketService, type UserStatusEvent } from '@/lib/services/socket.service'
+import { useChatStore } from '@/store/chatStore'
 import { logger } from '@/lib/logger'
-import type { RealtimeChannel } from '@supabase/supabase-js'
 
+/**
+ * Hook to manage user presence via Socket.io
+ * Connects to socket server and listens for user status changes
+ * Note: Socket remains connected on component unmount - only disconnects on logout
+ */
 export const usePresence = (userId: string | undefined) => {
-  const channelRef = useRef<RealtimeChannel | null>(null)
-
-  const subscribe = useCallback(() => {
-    if (!userId) return
-
-    const result = presenceService.subscribeToPresence(userId, (presence) => {
-      logger.info('usePresence', 'Presence state updated', presence)
-    })
-
-    if (result.success && result.channel) {
-      channelRef.current = result.channel
-    }
-  }, [userId])
-
-  const unsubscribe = useCallback(() => {
-    if (channelRef.current) {
-      presenceService.unsubscribeFromPresence(channelRef.current)
-      channelRef.current = null
-    }
-  }, [])
+  const { setUserOnline, setUserOffline } = useChatStore()
 
   useEffect(() => {
-    subscribe()
-    return () => {
-      unsubscribe()
+    if (!userId) {
+      return
     }
-  }, [subscribe, unsubscribe])
 
-  return {
-    subscribe,
-    unsubscribe,
-  }
+    logger.info('usePresence', 'Setting up presence for user', userId)
+
+    // Connect to socket server (reuses existing connection if available)
+    socketService.connect(userId)
+
+    // Handle initial online users list (sent when connecting)
+    const handleInitialOnlineUsers = (userIds: string[]) => {
+      logger.info('usePresence:handleInitialOnlineUsers', 'Received initial online users', userIds)
+      
+      // Mark all online users as online (except ourselves)
+      userIds.forEach((id) => {
+        if (id !== userId) {
+          setUserOnline(id)
+        }
+      })
+    }
+
+    // Handle user status events (real-time updates)
+    const handleUserStatus = (event: UserStatusEvent) => {
+      // Filter out events about ourselves (optimization)
+      if (event.userId === userId) {
+        return
+      }
+
+      logger.info('usePresence:handleUserStatus', 'User status event', event)
+      
+      if (event.status === 'online') {
+        setUserOnline(event.userId)
+      } else if (event.status === 'offline') {
+        setUserOffline(event.userId, event.last_seen)
+      }
+    }
+
+    // Subscribe to initial online users list
+    socketService.onInitialOnlineUsers(handleInitialOnlineUsers)
+
+    // Subscribe to user status events
+    socketService.onUserStatus(handleUserStatus)
+
+    // Cleanup on unmount - only remove listeners, keep socket connected
+    // Socket will disconnect only on explicit logout
+    return () => {
+      logger.info('usePresence', 'Cleaning up presence listeners', userId)
+      socketService.offUserStatus()
+      socketService.offInitialOnlineUsers()
+      // ✅ Keep socket connected, only remove listeners
+    }
+  }, [userId, setUserOnline, setUserOffline])
 }
 

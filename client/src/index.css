@@ -131,3 +131,63 @@ body {
 .safe-bottom {
   padding-bottom: max(env(safe-area-inset-bottom), 1rem);
 }
+
+/* Typing Indicator Animation */
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #6b7280;
+  animation: typing-wave 1.4s ease-in-out infinite;
+}
+
+/* LOW FIX #9: Support for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot {
+    animation: typing-wave-reduced 1.4s ease-in-out infinite;
+  }
+}
+
+.typing-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* LOW FIX #9: Refined animation - reduced translateY from -10px to -6px for smoother motion */
+@keyframes typing-wave {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+/* LOW FIX #9: Reduced motion animation - only opacity changes, no transform */
+@keyframes typing-wave-reduced {
+  0%,
+  60%,
+  100% {
+    opacity: 0.5;
+  }
+  30% {
+    opacity: 1;
+  }
+}

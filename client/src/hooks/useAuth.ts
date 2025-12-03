@@ -1,5 +1,6 @@
 import { authService } from '@/lib/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
+import { socketService } from '@/lib/services/socket.service'
 import { logger } from '@/lib/logger'
 import type { LoginCredentials, SignupCredentials } from '@/lib/services/auth.service'
 
@@ -92,6 +93,8 @@ export const useAuth = () => {
         if (message.includes('Auth session missing')) {
           logger.warn('useAuth:logout', 'Session already missing, clearing client auth state')
           clearAuth()
+          // Disconnect socket even on soft-success
+          socketService.disconnect()
           return { success: true }
         }
 
@@ -103,12 +106,17 @@ export const useAuth = () => {
       // Clear store
       clearAuth()
 
-      logger.info('useAuth:logout', 'Logout successful')
+      // Disconnect socket on logout
+      socketService.disconnect()
+      logger.info('useAuth:logout', 'Logout successful, socket disconnected')
+
       return { success: true }
     } catch (err) {
       const errorMessage = 'An unexpected error occurred'
       setError(errorMessage)
       logger.error('useAuth:logout', 'Unexpected logout error', err)
+      // Disconnect socket even on error
+      socketService.disconnect()
       return { success: false, error: errorMessage }
     } finally {
       setLoading(false)

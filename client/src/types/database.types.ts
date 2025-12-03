@@ -16,6 +16,8 @@ export interface DatabaseProfile {
   username: string | null
   avatar_url: string | null
   phone: string | null
+  status: string | null
+  last_seen: string | null
   created_at: string
   updated_at: string
 }

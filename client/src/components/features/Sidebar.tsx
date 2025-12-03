@@ -28,17 +28,50 @@ export const Sidebar = () => {
 
   const [searchQuery, setSearchQuery] = useState('')
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fetchConversationsRef = useRef<{
+    lastFetchTime: number
+    userId: string | null
+  }>({
+    lastFetchTime: 0,
+    userId: null,
+  })
 
   useEffect(() => {
     if (!session || !user?.id) {
       return
     }
-    fetchConversations()
+
+    // Deduplicate conversation fetches to prevent redundant calls
+    // This handles React StrictMode double-mounts and rapid auth state changes
+    const now = Date.now()
+    const timeSinceLastFetch = now - fetchConversationsRef.current.lastFetchTime
+    const isSameUser = fetchConversationsRef.current.userId === user.id
+    const isRecentFetch = timeSinceLastFetch < 500 // Prevent fetches within 500ms
+
+    // Skip if: already loading, or recent fetch for same user (unless user changed)
+    if (conversationsLoading) {
+      logger.info('Sidebar:mount', 'Skipping duplicate conversation fetch - already loading')
+      return
+    }
+
+    if (isRecentFetch && isSameUser) {
+      logger.info('Sidebar:mount', 'Skipping duplicate conversation fetch - recent fetch', {
+        timeSinceLastFetch: `${timeSinceLastFetch}ms`,
+      })
+      return
+    }
+
+    // Update ref to track fetch
+    fetchConversationsRef.current.lastFetchTime = now
+    fetchConversationsRef.current.userId = user.id
+
     logger.info('Sidebar:mount', 'Fetching conversations for authenticated user')
+    void fetchConversations()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, user?.id])
   // Note: fetchConversations is intentionally excluded from dependencies
   // It's a stable function from Zustand store and doesn't need to trigger re-runs
+  // conversationsLoading is used for deduplication check only
 
   useEffect(() => {
     return () => {
@@ -97,7 +130,7 @@ export const Sidebar = () => {
         </motion.h1>
 
         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/50 backdrop-blur-sm border border-white/30">
-          <Avatar profile={profile} loading={profileLoading} size="md" />
+          <Avatar profile={profile} loading={profileLoading} size="md" isOnline={true} />
           <div className="flex-1 min-w-0">
             {profileLoading ? (
               <>

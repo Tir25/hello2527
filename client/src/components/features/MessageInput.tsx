@@ -9,6 +9,8 @@ import { toast } from '@/store/toastStore'
 import { logger } from '@/lib/logger'
 import { STORAGE, getUserFriendlyError } from '@/lib/constants/storage'
 import imageCompression from 'browser-image-compression'
+import { socketService } from '@/lib/services/socket.service'
+import { TYPING_STOP_TIMEOUT, TYPING_THROTTLE_MS } from '@/lib/constants/typing'
 
 interface MessageInputProps {
   onSend: (content: string, mediaUrl?: string, mediaType?: 'image' | 'video' | 'audio' | 'document') => void
@@ -43,10 +45,84 @@ export const MessageInput = ({
   const documentInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hasEmittedTypingStartRef = useRef<boolean>(false)
+  // CRITICAL FIX #3: Store receiverId in ref to ensure cleanup always has access
+  const receiverIdRef = useRef<string | null>(null)
+  // MEDIUM FIX #5: Throttle tracking for typing events
+  const lastTypingEmitRef = useRef<number>(0)
   const { user } = useAuthStore()
   const { selectedUser } = useChatStore()
 
   const targetReceiverId = receiverId || selectedUser?.id
+
+  // Update receiverId ref when it changes
+  useEffect(() => {
+    receiverIdRef.current = targetReceiverId || null
+  }, [targetReceiverId])
+
+  // CRITICAL FIX #3: Proper cleanup on unmount with ref-based receiverId
+  // This ensures cleanup always has access to receiverId even if component unmounts quickly
+  useEffect(() => {
+    return () => {
+      // Clear timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+        typingTimeoutRef.current = null
+      }
+      
+      // Stop typing indicator using ref (always available)
+      if (hasEmittedTypingStartRef.current && receiverIdRef.current) {
+        socketService.emitTypingStop(receiverIdRef.current)
+        hasEmittedTypingStartRef.current = false
+      }
+    }
+  }, []) // Empty deps - only runs on unmount
+
+  // Additional cleanup when receiverId changes
+  useEffect(() => {
+    // Stop typing for previous receiver
+    if (hasEmittedTypingStartRef.current && receiverIdRef.current && receiverIdRef.current !== targetReceiverId) {
+      socketService.emitTypingStop(receiverIdRef.current)
+      hasEmittedTypingStartRef.current = false
+    }
+  }, [targetReceiverId])
+
+  // CRITICAL FIX #3: Handle window/tab close events to prevent ghost typing
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (hasEmittedTypingStartRef.current && receiverIdRef.current) {
+        // Use sendBeacon for reliable delivery on page unload
+        // Fallback to synchronous emit if beacon is not available
+        try {
+          if (navigator.sendBeacon) {
+            // Note: sendBeacon only works with POST requests, so we'll use sync emit as fallback
+            socketService.emitTypingStop(receiverIdRef.current)
+          } else {
+            socketService.emitTypingStop(receiverIdRef.current)
+          }
+        } catch (error) {
+          // Ignore errors during unload - socket may already be disconnected
+        }
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      // Stop typing when tab becomes hidden (user switched tabs/apps)
+      if (document.hidden && hasEmittedTypingStartRef.current && receiverIdRef.current) {
+        socketService.emitTypingStop(receiverIdRef.current)
+        hasEmittedTypingStartRef.current = false
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   // Auto-resize textarea
   useEffect(() => {
@@ -139,8 +215,51 @@ export const MessageInput = ({
     setUploadError(null)
   }
 
+  // Handle typing events with throttling and debounce
+  const handleTyping = () => {
+    if (!targetReceiverId || disabled) return
+
+    const now = Date.now()
+    const timeSinceLastEmit = now - lastTypingEmitRef.current
+
+    // MEDIUM FIX #5: Throttle typing_start emissions to prevent network spam
+    // Only emit typing_start if:
+    // 1. We haven't emitted it yet, OR
+    // 2. It's been more than TYPING_THROTTLE_MS since last emission
+    if (!hasEmittedTypingStartRef.current || timeSinceLastEmit >= TYPING_THROTTLE_MS) {
+      socketService.emitTypingStart(targetReceiverId)
+      hasEmittedTypingStartRef.current = true
+      lastTypingEmitRef.current = now
+    }
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+
+    // MEDIUM FIX #6: Use configurable timeout instead of hardcoded value
+    // Set timeout to emit typing_stop after configured inactivity period
+    typingTimeoutRef.current = setTimeout(() => {
+      if (hasEmittedTypingStartRef.current) {
+        socketService.emitTypingStop(targetReceiverId)
+        hasEmittedTypingStartRef.current = false
+      }
+      typingTimeoutRef.current = null
+    }, TYPING_STOP_TIMEOUT)
+  }
+
   const handleSend = async () => {
     const trimmedContent = content.trim()
+
+    // Stop typing indicator when sending
+    if (hasEmittedTypingStartRef.current && targetReceiverId) {
+      socketService.emitTypingStop(targetReceiverId)
+      hasEmittedTypingStartRef.current = false
+    }
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+      typingTimeoutRef.current = null
+    }
 
     // Prevent double-click
     if (isUploading) return
@@ -539,7 +658,10 @@ export const MessageInput = ({
             <textarea
               ref={textareaRef}
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => {
+                setContent(e.target.value)
+                handleTyping()
+              }}
               onKeyDown={handleKeyDown}
               disabled={disabled || isUploading}
               placeholder={isRecording ? 'Recording audio... (click paperclip to stop)' : placeholder}

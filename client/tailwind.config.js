@@ -37,6 +37,9 @@ export default {
                 'navigation-orb': '60',
                 modal: '70',
             },
+            animation: {
+                'spin-slow': 'spin 3s linear infinite',
+            },
         },
     },
     plugins: [],

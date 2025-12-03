@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/utils/cn'
+import { useChatStore } from '@/store/chatStore'
 import type { Profile } from '@/lib/services/profile.service'
 
 interface UserItemProps {
@@ -38,12 +39,14 @@ export const UserItem = ({
   lastMessageTime,
   unreadCount = 0,
 }: UserItemProps) => {
+  const { isUserOnline } = useChatStore()
   const displayName = user.full_name || user.username || user.email?.split('@')[0] || 'User'
 
   const subtitle = lastMessage || (user.status || "Hey there! I am using He'loo")
 
   const hasUnread = unreadCount > 0
   const timeDisplay = formatMessageTime(lastMessageTime)
+  const isOnline = isUserOnline(user.id)
 
   const unreadAriaLabel = hasUnread
     ? `${unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`
@@ -69,9 +72,10 @@ export const UserItem = ({
       aria-pressed={isSelected}
     >
       <div className="relative">
-        <Avatar profile={user} size="md" />
+        <Avatar profile={user} size="md" isOnline={isOnline} />
         <span className="sr-only">
           Status: {user.status ? user.status : 'No status message set'}
+          {isOnline ? ' (Online)' : ' (Offline)'}
         </span>
       </div>
 

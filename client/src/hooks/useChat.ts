@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { chatService } from '@/lib/services/chat.service'
 import { logger } from '@/lib/logger'
@@ -7,6 +7,7 @@ import type { DatabaseMessage } from '@/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { MEDIA_PLACEHOLDER } from '@/lib/constants/media'
+import { socketService } from '@/lib/services/socket.service'
 
 export const useChat = () => {
   const {
@@ -17,6 +18,7 @@ export const useChat = () => {
     addMessage,
     setSelectedUser,
     messagesLoading,
+    setUserTyping,
   } = useChatStore()
 
   const fetchMessages = useCallback(
@@ -184,6 +186,58 @@ export const useChat = () => {
     }
   }, [])
 
+  // Subscribe to typing events when selectedUser changes
+  useEffect(() => {
+    const socket = socketService.getSocket()
+    const currentSelectedUser = selectedUser
+    
+    // Clear typing state when conversation changes (BEFORE removing listeners)
+    if (!currentSelectedUser) {
+      // CRITICAL FIX #1: Clear state FIRST, then remove listeners
+      // This prevents race condition where state persists after listener removal
+      const { typingUsers } = useChatStore.getState()
+      const typingUserIds = Array.from(typingUsers) // Create array snapshot before clearing
+      typingUserIds.forEach((userId) => {
+        setUserTyping(userId, false)
+      })
+      socketService.offUserTyping()
+      return
+    }
+
+    // CRITICAL FIX #2: Check socket connection with proper error handling
+    if (!socket || !socket.connected) {
+      logger.warn(
+        'useChat:typingSubscription',
+        `Socket not available or disconnected. Cannot subscribe to typing events for user ${currentSelectedUser.id}`
+      )
+      // Clear typing state for this user since we can't receive events
+      setUserTyping(currentSelectedUser.id, false)
+      return
+    }
+
+    socketService.onUserTyping((event) => {
+      // Only handle typing events for the current conversation
+      // Show typing indicator if the selected user is typing (they're typing to us)
+      if (event.userId === currentSelectedUser.id) {
+        setUserTyping(event.userId, event.isTyping)
+      }
+    })
+
+    return () => {
+      // CRITICAL FIX #1: Clear state FIRST to prevent race condition
+      // Capture the selectedUser at cleanup time
+      const userToClear = currentSelectedUser
+      if (userToClear) {
+        setUserTyping(userToClear.id, false)
+      }
+      // Then remove listeners
+      socketService.offUserTyping()
+    }
+  }, [selectedUser?.id, setUserTyping]) // Only depend on selectedUser.id to avoid object reference issues
+
+  const typingUsers = useChatStore((state) => state.typingUsers)
+  const isUserTyping = useChatStore((state) => state.isUserTyping)
+
   return {
     selectedUser,
     messages,
@@ -193,6 +247,8 @@ export const useChat = () => {
     subscribeToMessages,
     unsubscribeFromMessages,
     setSelectedUser,
+    typingUsers,
+    isUserTyping,
   }
 }
 

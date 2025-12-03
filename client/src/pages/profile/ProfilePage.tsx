@@ -286,6 +286,8 @@ export const ProfilePage = () => {
                 avatarUrl={profile.avatar_url}
                 onFileSelect={handleAvatarUpload}
                 uploading={uploading}
+                profile={profile}
+                isOnline={true}
               />
             </div>
 

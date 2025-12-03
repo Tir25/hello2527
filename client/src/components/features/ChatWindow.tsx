@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@/hooks/useChat'
 import { useAuthStore } from '@/store/authStore'
 import { useChatStore } from '@/store/chatStore'
@@ -22,6 +22,7 @@ export const ChatWindow = () => {
     subscribeToMessages,
     unsubscribeFromMessages,
     setSelectedUser,
+    isUserTyping,
   } = useChat()
   const { user } = useAuthStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -152,6 +153,28 @@ export const ChatWindow = () => {
           </div>
         )}
       </div>
+
+      {/* Typing Indicator */}
+      <AnimatePresence>
+        {selectedUser && isUserTyping(selectedUser.id) && (
+          <div className="flex-none px-4 py-2">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="flex items-center gap-2 text-sm text-gray-600"
+            >
+              <span className="font-medium">{selectedUser.full_name || selectedUser.email || 'User'}</span>
+              <span>is typing</span>
+              <div className="typing-dots">
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Input - bottom fixed flex item, not sticky */}
       <div className="flex-none">
