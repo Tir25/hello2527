@@ -190,7 +190,7 @@ export const useChat = () => {
   useEffect(() => {
     const socket = socketService.getSocket()
     const currentSelectedUser = selectedUser
-    
+
     // Clear typing state when conversation changes (BEFORE removing listeners)
     if (!currentSelectedUser) {
       // CRITICAL FIX #1: Clear state FIRST, then remove listeners
@@ -233,7 +233,7 @@ export const useChat = () => {
       // Then remove listeners
       socketService.offUserTyping()
     }
-  }, [selectedUser?.id, setUserTyping]) // Only depend on selectedUser.id to avoid object reference issues
+  }, [selectedUser, setUserTyping])
 
   const typingUsers = useChatStore((state) => state.typingUsers)
   const isUserTyping = useChatStore((state) => state.isUserTyping)

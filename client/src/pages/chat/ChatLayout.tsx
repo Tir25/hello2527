@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { Sidebar } from '@/components/features/Sidebar'
+import { Sidebar } from '@/components/sidebar/Sidebar'
 import { NavigationOrb } from '@/components/ui/NavigationOrb'
 import { useChatStore } from '@/store/chatStore'
 import { usePresence } from '@/hooks/usePresence'
@@ -12,7 +12,7 @@ interface ChatLayoutProps {
 export const ChatLayout = ({ children }: ChatLayoutProps) => {
   const { selectedUser } = useChatStore()
   const { user } = useAuthStore()
-  
+
   // Initialize socket.io presence connection
   usePresence(user?.id)
 
@@ -20,9 +20,8 @@ export const ChatLayout = ({ children }: ChatLayoutProps) => {
     <div className="h-full w-full flex overflow-hidden relative">
       {/* Left Pane - Sidebar */}
       <aside
-        className={`${
-          selectedUser ? 'hidden md:flex' : 'flex'
-        } w-full md:w-[400px] flex-shrink-0 flex-col overflow-hidden`}
+        className={`${selectedUser ? 'hidden md:flex' : 'flex'
+          } w-full md:w-[400px] flex-shrink-0 flex-col overflow-hidden`}
         aria-label="Conversation sidebar"
         role="complementary"
       >
@@ -31,9 +30,8 @@ export const ChatLayout = ({ children }: ChatLayoutProps) => {
 
       {/* Right Pane - Main Chat Area */}
       <main
-        className={`${
-          !selectedUser ? 'hidden md:flex' : 'flex'
-        } flex-1 flex flex-col overflow-hidden`}
+        className={`${!selectedUser ? 'hidden md:flex' : 'flex'
+          } flex-1 flex flex-col overflow-hidden`}
         role="main"
         aria-label="Active chat"
       >
