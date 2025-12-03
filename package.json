@@ -1,0 +1,33 @@
+{
+  "name": "heloo-platform",
+  "version": "1.0.0",
+  "description": "He'loo - Premium Social Chat Platform (Monorepo)",
+  "private": true,
+  "scripts": {
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "build": "npm run build:server && npm run build:client",
+    "lint:client": "cd client && npm run lint",
+    "lint:server": "cd server && npm run lint || echo \"Server lint not configured\"",
+    "lint": "npm run lint:client",
+    "type-check:client": "cd client && npx tsc --noEmit",
+    "type-check:server": "cd server && npx tsc --noEmit",
+    "type-check": "npm run type-check:client && npm run type-check:server"
+  },
+  "keywords": [
+    "chat",
+    "social",
+    "messaging",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
+
