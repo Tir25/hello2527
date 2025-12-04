@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import type { DatabaseMessage } from '@/types'
-import { MessageBubble } from '../message/MessageBubble'
+import { MessageBubble } from '@/components/chat/message/MessageBubble'
 import type { Profile } from '@/lib/services/profile.service'
 
 interface MessageListProps {
