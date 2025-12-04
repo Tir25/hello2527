@@ -28,7 +28,7 @@ export const MessageBubble = ({
 
   // Validate status with fallback
   const getValidStatus = (): 'sent' | 'delivered' | 'seen' => {
-    return (['sent', 'delivered', 'seen'].includes(message.status) ? message.status : 'sent') as
+    return (message.status && ['sent', 'delivered', 'seen'].includes(message.status) ? message.status : 'sent') as
       | 'sent'
       | 'delivered'
       | 'seen'

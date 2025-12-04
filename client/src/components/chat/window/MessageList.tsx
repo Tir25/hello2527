@@ -22,7 +22,7 @@ type ScrollBehaviorType = 'auto' | 'smooth'
 export const MessageList = ({
   messages,
   currentUserId,
-  selectedUser,
+  selectedUser: _selectedUser, // Unused but kept for interface compatibility
   loading,
   messagesContainerRef,
   messagesEndRef,

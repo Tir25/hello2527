@@ -21,6 +21,7 @@ export interface Profile {
   status: string | null
   last_seen: string | null
   created_at: string | null
+  theme_color?: string | null
 }
 
 interface ProfileResponse {

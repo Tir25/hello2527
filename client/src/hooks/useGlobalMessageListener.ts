@@ -146,10 +146,10 @@ export const useGlobalMessageListener = () => {
         }
 
         // Only process if status changed
-        if (updatedMessage.status !== oldMessage.status) {
+        if (updatedMessage.status && updatedMessage.status !== (oldMessage.status || undefined)) {
           logger.info('useGlobalMessageListener', 'Message status updated', {
             messageId: updatedMessage.id,
-            oldStatus: oldMessage.status,
+            oldStatus: oldMessage.status || undefined,
             newStatus: updatedMessage.status,
           })
 

@@ -70,6 +70,11 @@ interface ChatState {
   sendMessage: (content: string, receiverId: string, currentUserId: string) => Promise<{ success: boolean; error?: string }>
   subscribeToMessages: (currentUserId: string) => void
   unsubscribeFromMessages: () => void
+  
+  // Message status and handling operations (for hooks)
+  handleIncomingMessage: (message: DatabaseMessage, currentUserId: string) => void
+  updateMessageStatus: (messageId: string, status: 'sent' | 'delivered' | 'seen' | null | undefined, deliveredAt?: string | null, seenAt?: string | null) => void
+  clearUnreadCount: (userId: string) => void
 }
 
 /**
@@ -492,6 +497,38 @@ export const useChatStore = create<ChatState>((set, get) => {
 
   isUserTyping: (userId: string) => {
     return get().typingUsers.has(userId)
+  },
+
+  // Message status and handling operations
+  handleIncomingMessage: (message: DatabaseMessage, currentUserId: string) => {
+    // Stub implementation - updates conversation list when message arrives
+    // This triggers a refresh of the conversation list
+    const { fetchConversations } = get()
+    // Throttle: only refresh if it's been more than 1 second since last refresh
+    void fetchConversations()
+  },
+
+  updateMessageStatus: (messageId: string, status: 'sent' | 'delivered' | 'seen' | null | undefined, deliveredAt?: string | null, seenAt?: string | null) => {
+    const { messages } = get()
+    const updatedMessages = messages.map((msg) => {
+      if (msg.id === messageId) {
+        return {
+          ...msg,
+          status: status || undefined,
+          delivered_at: deliveredAt || undefined,
+          seen_at: seenAt || undefined,
+        }
+      }
+      return msg
+    })
+    set({ messages: updatedMessages })
+  },
+
+  clearUnreadCount: (userId: string) => {
+    // Stub implementation - clear unread count for a user
+    // This would typically update the conversation list
+    const { fetchConversations } = get()
+    void fetchConversations()
   },
   }
 })

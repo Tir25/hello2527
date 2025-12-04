@@ -7,6 +7,9 @@ export interface DatabaseMessage {
   is_read: boolean
   media_url?: string | null
   media_type?: 'image' | 'video' | 'audio' | 'document' | null
+  status?: 'sent' | 'delivered' | 'seen' | null
+  delivered_at?: string | null
+  seen_at?: string | null
 }
 
 export interface DatabaseProfile {
