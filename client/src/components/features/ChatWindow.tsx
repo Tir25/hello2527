@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useChat } from '@/hooks/useChat'
 import { useAuthStore } from '@/store/authStore'
 import { useChatStore } from '@/store/chatStore'
+import { useMessageStatus } from '@/hooks/useMessageStatus'
 import { WelcomeScreen } from './WelcomeScreen'
 import { ChatHeader } from './ChatHeader'
-import { MessageBubble } from './MessageBubble'
+import { MessageBubble } from '@/components/chat/message/MessageBubble'
 import { MessageInput } from './MessageInput'
 import { logger } from '@/lib/logger'
 import { toast } from '@/store/toastStore'
-import { supabase } from '@/lib/supabase'
 
 type ScrollBehaviorType = 'auto' | 'smooth'
 
@@ -28,8 +28,12 @@ export const ChatWindow = () => {
   const { user } = useAuthStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const processedMessageIdsRef = useRef<Set<string>>(new Set())
-  const markSeenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Use message status hook to automatically mark messages as seen
+  useMessageStatus({
+    selectedUserId: selectedUser?.id || null,
+    currentUserId: user?.id || null,
+  })
 
   const NEAR_BOTTOM_THRESHOLD_PX = 160
 
@@ -52,73 +56,7 @@ export const ChatWindow = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser?.id, user?.id])
 
-  // Mark new messages as "Seen" when they arrive while chat is already open
-  // CRITICAL FIX #1 & #3: Single source of truth with proper dependency tracking
-  useEffect(() => {
-    if (!selectedUser || !user?.id) {
-      // Reset processed messages when chat closes
-      processedMessageIdsRef.current.clear()
-      return
-    }
-
-    // Find unseen messages from selectedUser that haven't been processed
-    const unseenMessages = messages.filter(
-      (msg) => 
-        msg.sender_id === selectedUser.id && 
-        msg.status !== 'seen' &&
-        !processedMessageIdsRef.current.has(msg.id)
-    )
-
-    if (unseenMessages.length === 0) return
-
-    // Mark these message IDs as processed immediately to prevent duplicate calls
-    unseenMessages.forEach(msg => processedMessageIdsRef.current.add(msg.id))
-
-    // Debounce to batch rapid message arrivals (300ms)
-    if (markSeenTimeoutRef.current) {
-      clearTimeout(markSeenTimeoutRef.current)
-    }
-
-    markSeenTimeoutRef.current = setTimeout(() => {
-      // Mark messages as seen
-      Promise.resolve(
-        supabase.rpc('mark_messages_seen', {
-          sender_id_param: selectedUser.id,
-          receiver_id_param: user.id,
-        })
-      )
-        .then(({ data, error }) => {
-          if (error) {
-            logger.error('ChatWindow:markSeen', 'Failed to mark messages as seen', error)
-            // Remove from processed set on error so we can retry
-            unseenMessages.forEach(msg => processedMessageIdsRef.current.delete(msg.id))
-          } else {
-            // LOW FIX #3: Log count instead of full array
-            const count = data?.length || 0
-            logger.debug('ChatWindow:markSeen', `Marked ${count} messages as seen`)
-            // Clear unread count for this conversation
-            useChatStore.getState().clearUnreadCount(selectedUser.id)
-          }
-        })
-        .catch((err: unknown) => {
-          logger.error('ChatWindow:markSeen', 'Unexpected error marking messages as seen', err)
-          // Remove from processed set on error so we can retry
-          unseenMessages.forEach(msg => processedMessageIdsRef.current.delete(msg.id))
-        })
-    }, 300)
-
-    // LOW FIX #1: Cleanup timeout on unmount or dependency change
-    return () => {
-      if (markSeenTimeoutRef.current) {
-        clearTimeout(markSeenTimeoutRef.current)
-        markSeenTimeoutRef.current = null
-      }
-    }
-    // CRITICAL FIX #3: Using messages.length instead of messages array to prevent infinite loops
-    // Using selectedUser?.id instead of selectedUser to prevent unnecessary re-renders
-    // The ref-based tracking (processedMessageIdsRef) ensures we don't process the same message twice
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedUser?.id, user?.id, messages.length])
+  // Message status hook handles marking messages as seen automatically
 
   useEffect(() => {
     scrollToBottom('smooth')
@@ -215,9 +153,9 @@ export const ChatWindow = () => {
               const isOwn = message.sender_id === user?.id
               const isLastMessage = index === messages.length - 1
               return (
-                <MessageBubble 
-                  key={message.id} 
-                  message={message} 
+                <MessageBubble
+                  key={message.id}
+                  message={message}
                   isOwn={isOwn}
                   recipientProfile={selectedUser}
                   isLastMessage={isLastMessage}

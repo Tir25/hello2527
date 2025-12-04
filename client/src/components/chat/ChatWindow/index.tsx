@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useChat } from '@/hooks/useChat'
 import { useAuthStore } from '@/store/authStore'
 import { useChatStore } from '@/store/chatStore'
 import { useChatWindow } from '@/hooks/chat/useChatWindow'
 import { useAutoScroll } from '@/hooks/chat/useAutoScroll'
+import { useMessageStatus } from '@/hooks/useMessageStatus'
 import { WelcomeScreen } from '@/components/features/WelcomeScreen'
 import { ChatHeader } from '@/components/features/ChatHeader'
 import { MessageInput } from '@/components/chat/MessageInput'
@@ -48,6 +49,16 @@ export const ChatWindow = () => {
         messagesContainerRef,
     })
 
+    // PRODUCTION OPTIMIZATION: Memoize user IDs to prevent unnecessary hook re-execution
+    // This ensures useMessageStatus only re-runs when actual user IDs change, not on every render
+    const messageStatusProps = useMemo(() => ({
+        selectedUserId: selectedUser?.id || null,
+        currentUserId: user?.id || null,
+    }), [selectedUser?.id, user?.id])
+
+    // CRITICAL: Mark messages as seen automatically
+    useMessageStatus(messageStatusProps)
+
     // Fetch messages and subscribe when user is selected
     useEffect(() => {
         if (selectedUser && user?.id) {
@@ -90,6 +101,7 @@ export const ChatWindow = () => {
                 <MessageList
                     messages={messages}
                     currentUserId={user?.id || ''}
+                    recipientProfile={selectedUser}
                     messagesContainerRef={messagesContainerRef}
                     messagesEndRef={messagesEndRef}
                 />

@@ -1,3 +1,6 @@
+/* eslint-disable no-undef */
+// DEPRECATED: This file is replaced by components/chat/message/MessageBubble.tsx
+// Keeping for backwards compatibility during transition
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
