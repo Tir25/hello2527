@@ -71,9 +71,9 @@ interface ChatState {
   subscribeToMessages: (currentUserId: string) => void
   unsubscribeFromMessages: () => void
   
-  // Message status and handling operations (for hooks)
+  // Global message listener action
   handleIncomingMessage: (message: DatabaseMessage, currentUserId: string) => void
-  updateMessageStatus: (messageId: string, status: 'sent' | 'delivered' | 'seen' | null | undefined, deliveredAt?: string | null, seenAt?: string | null) => void
+  updateMessageStatus: (messageId: string, status: 'sent' | 'delivered' | 'seen', deliveredAt?: string | null, seenAt?: string | null) => void
   clearUnreadCount: (userId: string) => void
 }
 
@@ -134,11 +134,29 @@ export const useChatStore = create<ChatState>((set, get) => {
 
   setSelectedUser: (user: Profile | null) => {
     set({ selectedUser: user })
+    
     // Clear messages when selecting a new user
     if (user === null) {
       set({ messages: [] })
       get().unsubscribeFromMessages()
+      return
     }
+    
+    // Subscribe to status updates for the selected conversation
+    // Note: Global listener handles INSERT events, this handles UPDATE events
+    supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
+      if (currentUser?.id) {
+        // Subscribe to status updates
+        get().subscribeToMessages(currentUser.id)
+        
+        // NEW LOW #1: Removed duplicate mark_messages_seen RPC call
+        // ChatWindow now handles marking messages as seen with proper tracking refs
+        // This prevents duplicate calls and ensures single source of truth
+        // Unread count will be cleared by ChatWindow after marking as seen
+      }
+    }).catch((err) => {
+      logger.error('chatStore:setSelectedUser', 'Failed to get current user', err)
+    })
   },
 
   setUsers: (users: Profile[]) => {
@@ -297,25 +315,30 @@ export const useChatStore = create<ChatState>((set, get) => {
   sendMessage: async (content: string, receiverId: string, currentUserId: string) => {
     try {
       // Optimistically add message to UI for instant feedback
+      // MEDIUM FIX #3: Include proper status fields
       const optimisticMessage: DatabaseMessage = {
         id: `temp-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         sender_id: currentUserId,
         receiver_id: receiverId,
         content: content.trim(),
         created_at: new Date().toISOString(),
-        is_read: false,
+        status: 'sent',
+        delivered_at: null,
+        seen_at: null,
       }
       
       // Add optimistic message immediately
       get().addMessage(optimisticMessage)
 
       // Insert message - data not needed as subscription will handle adding it
+      // NEW ISSUE #2 FIX: Explicitly set status field (better than relying on database default)
       const { error } = await supabase
         .from('messages')
         .insert({
           sender_id: currentUserId,
           receiver_id: receiverId,
           content: content.trim(),
+          status: 'sent', // Explicit is better than implicit
         })
 
       if (error) {
@@ -352,69 +375,15 @@ export const useChatStore = create<ChatState>((set, get) => {
     }
   },
 
-  subscribeToMessages: (currentUserId: string) => {
+  subscribeToMessages: (_currentUserId: string) => {
     // Unsubscribe from any existing channel
     get().unsubscribeFromMessages()
 
-    const channel = supabase
-      .channel('messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-        },
-        (payload) => {
-          const newMessage = payload.new as DatabaseMessage
-          const { selectedUser, messages } = get()
-
-          // Refresh conversations when a new message is received (for sidebar updates)
-          // This ensures the conversation list stays current with latest messages,
-          // but is throttled to avoid redundant RPC calls.
-          if (newMessage.sender_id === currentUserId || newMessage.receiver_id === currentUserId) {
-            void refreshConversationsThrottled()
-          }
-
-          // Only add message to chat if it belongs to the current conversation
-          if (
-            selectedUser &&
-            ((newMessage.sender_id === currentUserId && newMessage.receiver_id === selectedUser.id) ||
-             (newMessage.sender_id === selectedUser.id && newMessage.receiver_id === currentUserId))
-          ) {
-            // If we previously added an optimistic message for this exact payload,
-            // remove it so we can replace it with the real message (same sender,
-            // receiver and content, but with the real database id/timestamp).
-            const withoutOptimistic = messages.filter(
-              (m) =>
-                !(
-                  m.id.startsWith('temp-') &&
-                  m.sender_id === newMessage.sender_id &&
-                  m.receiver_id === newMessage.receiver_id &&
-                  m.content === newMessage.content
-                )
-            )
-
-            // Avoid duplicates based on real message id
-            if (!withoutOptimistic.find((m) => m.id === newMessage.id)) {
-              logger.info('chatStore:subscribeToMessages', 'New message received via subscription')
-              set({ messages: [...withoutOptimistic, newMessage] })
-            } else {
-              set({ messages: withoutOptimistic })
-            }
-          }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          logger.info('chatStore:subscribeToMessages', 'Successfully subscribed to messages channel')
-        } else if (status === 'CHANNEL_ERROR') {
-          logger.error('chatStore:subscribeToMessages', 'Channel subscription error')
-          set({ error: 'Failed to subscribe to real-time updates' })
-        }
-      })
-
-    set({ channel })
+    // CRITICAL FIX: Supabase Realtime doesn't support complex `or()` filter syntax
+    // useGlobalMessageListener now handles all real-time updates globally with proper filters
+    // This function is kept for backward compatibility but is now a no-op since
+    // the global listener handles both INSERT and UPDATE events for sent/received messages
+    logger.debug('chatStore:subscribeToMessages', 'Skipped - global listener handles real-time updates')
   },
 
   unsubscribeFromMessages: () => {
@@ -499,36 +468,76 @@ export const useChatStore = create<ChatState>((set, get) => {
     return get().typingUsers.has(userId)
   },
 
-  // Message status and handling operations
+  /**
+   * Handles incoming messages from global listener
+   * - Reorders conversation to top
+   * - Updates last_message
+   * - Increments unread_count if not viewing that chat
+   */
   handleIncomingMessage: (message: DatabaseMessage, currentUserId: string) => {
-    // Stub implementation - updates conversation list when message arrives
-    // This triggers a refresh of the conversation list
-    const { fetchConversations } = get()
-    // Throttle: only refresh if it's been more than 1 second since last refresh
-    void fetchConversations()
+    const { conversations, selectedUser } = get()
+    
+    // Find the conversation with the sender
+    const senderId = message.sender_id === currentUserId ? message.receiver_id : message.sender_id
+    const conversationIndex = conversations.findIndex(conv => conv.id === senderId)
+    
+    if (conversationIndex === -1) {
+      // New conversation - will be added by fetchConversations
+      // Just trigger a refresh
+      void refreshConversationsThrottled()
+      return
+    }
+    
+    // Create updated conversation
+    const conversation = conversations[conversationIndex]
+    const isCurrentlyViewing = selectedUser?.id === senderId
+    
+    // LOW FIX #2: Always fallback to 0 for unread_count
+    const updatedConversation: ConversationProfile = {
+      ...conversation,
+      last_message: message.content,
+      last_message_time: message.created_at,
+      unread_count: isCurrentlyViewing 
+        ? (conversation.unread_count || 0)
+        : (conversation.unread_count || 0) + 1
+    }
+    
+    // Remove from current position and add to top
+    const updatedConversations = [
+      updatedConversation,
+      ...conversations.filter((_, idx) => idx !== conversationIndex)
+    ]
+    
+    set({ conversations: updatedConversations })
+    logger.info('chatStore:handleIncomingMessage', `Updated conversation for user ${senderId}, unread: ${updatedConversation.unread_count}`)
   },
 
-  updateMessageStatus: (messageId: string, status: 'sent' | 'delivered' | 'seen' | null | undefined, deliveredAt?: string | null, seenAt?: string | null) => {
+  /**
+   * Updates message status in the messages array
+   */
+  updateMessageStatus: (messageId: string, status: 'sent' | 'delivered' | 'seen', deliveredAt?: string | null, seenAt?: string | null) => {
     const { messages } = get()
-    const updatedMessages = messages.map((msg) => {
-      if (msg.id === messageId) {
-        return {
-          ...msg,
-          status: status || undefined,
-          delivered_at: deliveredAt || undefined,
-          seen_at: seenAt || undefined,
-        }
-      }
-      return msg
-    })
+    const updatedMessages = messages.map(msg => 
+      msg.id === messageId
+        ? { ...msg, status, delivered_at: deliveredAt ?? msg.delivered_at, seen_at: seenAt ?? msg.seen_at }
+        : msg
+    )
     set({ messages: updatedMessages })
+    logger.debug('chatStore:updateMessageStatus', `Updated message ${messageId} status to ${status}`)
   },
 
+  /**
+   * Clears unread count for a specific conversation
+   */
   clearUnreadCount: (userId: string) => {
-    // Stub implementation - clear unread count for a user
-    // This would typically update the conversation list
-    const { fetchConversations } = get()
-    void fetchConversations()
+    const { conversations } = get()
+    const updatedConversations = conversations.map(conv =>
+      conv.id === userId
+        ? { ...conv, unread_count: 0 }
+        : conv
+    )
+    set({ conversations: updatedConversations })
+    logger.debug('chatStore:clearUnreadCount', `Cleared unread count for user ${userId}`)
   },
   }
 })

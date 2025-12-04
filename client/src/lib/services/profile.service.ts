@@ -21,7 +21,7 @@ export interface Profile {
   status: string | null
   last_seen: string | null
   created_at: string | null
-  theme_color?: string | null
+  theme_color?: string // NEW LOW #3: Optional theme color for status indicators
 }
 
 interface ProfileResponse {
@@ -48,7 +48,10 @@ export const profileService = {
     if (!skipCache) {
       const cached = profileCache.get(userId)
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        logger.info('profile:getProfile', `Profile served from cache for user: ${userId}`)
+        // Only log in development to reduce production noise
+        if (import.meta.env.DEV) {
+          logger.info('profile:getProfile', `Profile served from cache for user: ${userId}`)
+        }
         return {
           success: true,
           data: cached.data,
@@ -59,7 +62,11 @@ export const profileService = {
     // Check if there's already a pending request for this user
     const pendingRequest = pendingRequests.get(userId)
     if (pendingRequest) {
-      logger.info('profile:getProfile', `Deduplicating request for user: ${userId}`)
+      // Only log in development to reduce production noise
+      // This is expected when multiple components request the same profile simultaneously
+      if (import.meta.env.DEV) {
+        logger.info('profile:getProfile', `Deduplicating request for user: ${userId}`)
+      }
       return pendingRequest
     }
 

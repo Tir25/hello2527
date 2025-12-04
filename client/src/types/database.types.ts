@@ -4,12 +4,14 @@ export interface DatabaseMessage {
   receiver_id: string
   content: string
   created_at: string
-  is_read: boolean
-  media_url?: string | null
-  media_type?: 'image' | 'video' | 'audio' | 'document' | null
-  status?: 'sent' | 'delivered' | 'seen' | null
+  status: 'sent' | 'delivered' | 'seen'
   delivered_at?: string | null
   seen_at?: string | null
+  media_url?: string | null
+  media_type?: 'image' | 'video' | 'audio' | 'document' | null
+  file_name?: string | null
+  // Legacy field - kept for backward compatibility but should not be used
+  is_read?: boolean
 }
 
 export interface DatabaseProfile {

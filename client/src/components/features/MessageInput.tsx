@@ -26,10 +26,6 @@ interface FilePreview {
   error?: string
 }
 
-// Textarea height constants for consistent behavior across mobile and desktop
-const TEXTAREA_MIN_HEIGHT = 40 // pixels
-const TEXTAREA_MAX_HEIGHT = 120 // pixels - consistent for both JS resize and CSS
-
 export const MessageInput = ({
   onSend,
   disabled = false,
@@ -74,7 +70,7 @@ export const MessageInput = ({
         clearTimeout(typingTimeoutRef.current)
         typingTimeoutRef.current = null
       }
-
+      
       // Stop typing indicator using ref (always available)
       if (hasEmittedTypingStartRef.current && receiverIdRef.current) {
         socketService.emitTypingStop(receiverIdRef.current)
@@ -135,7 +131,8 @@ export const MessageInput = ({
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
       const scrollHeight = textareaRef.current.scrollHeight
-      textareaRef.current.style.height = `${Math.min(scrollHeight, TEXTAREA_MAX_HEIGHT)}px`
+      const maxHeight = 120
+      textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`
     }
   }, [content])
 
@@ -514,7 +511,7 @@ export const MessageInput = ({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="z-[20] flex-shrink-0 backdrop-blur-xl bg-white/70 border-t border-white/10 px-2 pt-1 safe-bottom mb-1"
+      className="z-chat-input flex-shrink-0 backdrop-blur-xl bg-white/70 border-t border-white/10 px-2 pt-1 pb-safe safe-bottom mb-1 md:mb-1"
     >
       <div className="flex flex-col gap-2 max-w-3xl mx-auto">
         {/* File Preview */}
@@ -598,122 +595,113 @@ export const MessageInput = ({
           <div className="flex items-end gap-1.5 flex-1 bg-white/80 backdrop-blur-xl border border-white/40 rounded-3xl px-2.5 py-1.5 shadow-md">
             {/* Paperclip Button */}
             <div className="relative flex-shrink-0">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                disabled={disabled || isUploading || isRequestingMic}
-                className={`p-3 rounded-full transition-all ${isRecording
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              disabled={disabled || isUploading || isRequestingMic}
+              className={`p-3 rounded-full transition-all ${isRecording
                   ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white animate-pulse'
                   : 'bg-white/50 backdrop-blur-sm border border-white/30 text-gray-700 hover:bg-white/70'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                aria-label={isRecording ? 'Recording audio - click to stop' : 'Attach media'}
-                aria-pressed={isRecording}
-              >
-                {isRecording || isRequestingMic ? (
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1 }}
-                  >
-                    <Paperclip size={20} />
-                  </motion.div>
-                ) : (
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              aria-label={isRecording ? 'Recording audio - click to stop' : 'Attach media'}
+              aria-pressed={isRecording}
+            >
+              {isRecording || isRequestingMic ? (
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                >
                   <Paperclip size={20} />
-                )}
-              </motion.button>
+                </motion.div>
+              ) : (
+                <Paperclip size={20} />
+              )}
+            </motion.button>
 
-              <MediaMenu
-                isOpen={isMenuOpen && !isRecording && !isRequestingMic}
-                onClose={() => setIsMenuOpen(false)}
-                onSelectImage={handleImageSelect}
-                onSelectVideo={handleVideoSelect}
-                onSelectDocument={handleDocumentSelect}
-                onStartRecording={startAudioRecording}
-              />
+            <MediaMenu
+              isOpen={isMenuOpen && !isRecording && !isRequestingMic}
+              onClose={() => setIsMenuOpen(false)}
+              onSelectImage={handleImageSelect}
+              onSelectVideo={handleVideoSelect}
+              onSelectDocument={handleDocumentSelect}
+              onStartRecording={startAudioRecording}
+            />
 
-              {/* File inputs with accessibility */}
-              <input
-                ref={imageInputRef}
-                id="image-upload"
-                name="image-upload"
-                type="file"
-                accept={STORAGE.VALID_MIME_TYPES.image.join(',')}
-                className="sr-only"
-                aria-label="Select image file"
-                onChange={(e) => handleFileInputChange(e, 'image')}
-              />
-              <input
-                ref={videoInputRef}
-                id="video-upload"
-                name="video-upload"
-                type="file"
-                accept={STORAGE.VALID_MIME_TYPES.video.join(',')}
-                className="sr-only"
-                aria-label="Select video file"
-                onChange={(e) => handleFileInputChange(e, 'video')}
-              />
-              <input
-                ref={documentInputRef}
-                id="document-upload"
-                name="document-upload"
-                type="file"
-                accept={STORAGE.VALID_MIME_TYPES.document.join(',')}
-                className="sr-only"
-                aria-label="Select document file"
-                onChange={(e) => handleFileInputChange(e, 'document')}
-              />
+            {/* File inputs with accessibility */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept={STORAGE.VALID_MIME_TYPES.image.join(',')}
+              className="sr-only"
+              aria-label="Select image file"
+              onChange={(e) => handleFileInputChange(e, 'image')}
+            />
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept={STORAGE.VALID_MIME_TYPES.video.join(',')}
+              className="sr-only"
+              aria-label="Select video file"
+              onChange={(e) => handleFileInputChange(e, 'video')}
+            />
+            <input
+              ref={documentInputRef}
+              type="file"
+              accept={STORAGE.VALID_MIME_TYPES.document.join(',')}
+              className="sr-only"
+              aria-label="Select document file"
+              onChange={(e) => handleFileInputChange(e, 'document')}
+            />
             </div>
 
             {/* Text Input */}
             <div className="flex-1 relative">
-              <textarea
-                ref={textareaRef}
-                id="message-input"
-                name="message"
-                value={content}
-                onChange={(e) => {
-                  setContent(e.target.value)
-                  handleTyping()
-                }}
-                onKeyDown={handleKeyDown}
-                disabled={disabled || isUploading}
-                placeholder={isRecording ? 'Recording audio... (click paperclip to stop)' : placeholder}
-                rows={1}
-                className="w-full px-2 py-1.5 bg-transparent border-0 rounded-2xl text-gray-900 placeholder-gray-500 resize-none focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed overflow-y-auto text-base"
-                style={{ minHeight: `${TEXTAREA_MIN_HEIGHT}px`, maxHeight: `${TEXTAREA_MAX_HEIGHT}px` }}
-                aria-label="Message input"
-                autoComplete="off"
-              />
-              {isRecording && (
-                <motion.button
-                  onClick={stopAudioRecording}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
-                  aria-label="Stop recording"
-                >
-                  Stop
-                </motion.button>
-              )}
-              {isRequestingMic && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <Loader2 size={16} className="animate-spin text-gray-500" />
-                </div>
-              )}
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => {
+                setContent(e.target.value)
+                handleTyping()
+              }}
+              onKeyDown={handleKeyDown}
+              disabled={disabled || isUploading}
+              placeholder={isRecording ? 'Recording audio... (click paperclip to stop)' : placeholder}
+              rows={1}
+              className="w-full px-2 py-1.5 bg-transparent border-0 rounded-2xl text-gray-900 placeholder-gray-500 resize-none focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed overflow-y-auto text-sm"
+              style={{ minHeight: '40px', maxHeight: '100px' }}
+              aria-label="Message input"
+            />
+            {isRecording && (
+              <motion.button
+                onClick={stopAudioRecording}
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
+                aria-label="Stop recording"
+              >
+                Stop
+              </motion.button>
+            )}
+            {isRequestingMic && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <Loader2 size={16} className="animate-spin text-gray-500" />
+              </div>
+            )}
             </div>
 
             {/* Send Button */}
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleSend}
-              disabled={disabled || !canSend || isUploading}
-              className="p-3 bg-gradient-to-r from-violet-500 to-blue-500 text-white rounded-full shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex-shrink-0"
-              aria-label="Send message"
-            >
-              {isUploading ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <Send size={20} className={canSend ? 'opacity-100' : 'opacity-50'} />
-              )}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSend}
+            disabled={disabled || !canSend || isUploading}
+            className="p-3 bg-gradient-to-r from-violet-500 to-blue-500 text-white rounded-full shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex-shrink-0"
+            aria-label="Send message"
+          >
+            {isUploading ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Send size={20} className={canSend ? 'opacity-100' : 'opacity-50'} />
+            )}
             </motion.button>
           </div>
         </div>

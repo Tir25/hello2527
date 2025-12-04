@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { User, MessageSquare, LayoutDashboard, Settings } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useGlobalMessageListener } from '@/hooks/useGlobalMessageListener'
 
 interface DashboardLayoutProps {
   children: ReactNode
@@ -45,6 +46,10 @@ const NavIcon = ({ to, label, icon: Icon, active }: NavIconProps) => {
 export const DashboardLayout = ({ children, hideTopNav }: DashboardLayoutProps) => {
   const { loading } = useAuthStore()
   const location = useLocation()
+
+  // CRITICAL: Mount global message listener for real-time updates
+  // This hook handles all Supabase Realtime subscriptions for messages
+  useGlobalMessageListener()
 
   const isChatRoute = location.pathname === '/'
   const isDashboardRoute = location.pathname === '/dashboard'

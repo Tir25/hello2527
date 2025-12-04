@@ -5,10 +5,14 @@ import { Download, FileText, Mic, X, Loader2, AlertCircle } from 'lucide-react'
 import type { DatabaseMessage } from '@/types'
 import { MEDIA_PLACEHOLDER, MEDIA_MAX_WIDTH } from '@/lib/constants/media'
 import { getSanitizedFilenameFromUrl } from '@/lib/utils/media'
+import { MessageStatus } from '@/components/chat/MessageStatus'
+import type { Profile } from '@/lib/services/profile.service'
 
 interface MessageBubbleProps {
   message: DatabaseMessage
   isOwn: boolean
+  recipientProfile?: Profile | null
+  isLastMessage?: boolean
 }
 
 interface MediaErrorState {
@@ -16,7 +20,7 @@ interface MediaErrorState {
   errorType: 'image' | 'video' | 'audio' | null
 }
 
-export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
+export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage = false }: MessageBubbleProps) => {
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [imageLoading, setImageLoading] = useState(true)
   const [videoLoading, setVideoLoading] = useState(true)
@@ -297,6 +301,9 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
           {/* Footer timestamp/read status
               - Hidden for media-only messages where time is inline
               - Also hidden for audio messages (audio always shows time inside its row)
+              - NEW LOW #2: Media-only messages intentionally don't show status indicator
+                (design choice - inline timestamp used instead). Animation optimization
+                (isLastMessage) applies to text messages and messages with both text and media.
           */}
           {!(hasMedia && (!hasTextContent || message.media_type === 'audio')) && (
             <div
@@ -304,19 +311,23 @@ export const MessageBubble = ({ message, isOwn }: MessageBubbleProps) => {
                 }`}
             >
               <span className="text-xs">{formattedTime}</span>
-              {isOwn && message.is_read && (
-                <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+              {/* Liquid/Organic Message Status Indicator */}
+              {isOwn && (
+                <MessageStatus
+                  status={
+                    // HIGH #3: Runtime status validation with fallback
+                    (['sent', 'delivered', 'seen'].includes(message.status) 
+                      ? message.status 
+                      : 'sent') as 'sent' | 'delivered' | 'seen'
+                  }
+                  recipientAvatar={recipientProfile?.avatar_url || null}
+                  recipientThemeColor={
+                    // MEDIUM #1: Support theme color from profile (future enhancement)
+                    // For now, use default purple/violet theme
+                    recipientProfile?.theme_color || 'rgb(139, 92, 246)'
+                  }
+                  isLastMessage={isLastMessage} // MEDIUM #2: Only animate last message for performance
+                />
               )}
             </div>
           )}

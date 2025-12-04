@@ -4,7 +4,6 @@ import { chatService } from '@/lib/services/chat.service'
 import { logger } from '@/lib/logger'
 import { toast } from '@/store/toastStore'
 import type { DatabaseMessage } from '@/types'
-import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { MEDIA_PLACEHOLDER } from '@/lib/constants/media'
 import { socketService } from '@/lib/services/socket.service'
@@ -70,7 +69,9 @@ export const useChat = () => {
           receiver_id: receiverId,
           content: content.trim() || (mediaUrl ? MEDIA_PLACEHOLDER : ''),
           created_at: new Date().toISOString(),
-          is_read: false,
+          status: 'sent',
+          delivered_at: null,
+          seen_at: null,
           media_url: mediaUrl,
           media_type: mediaType,
         }
@@ -111,62 +112,19 @@ export const useChat = () => {
     [addMessage]
   )
 
-  const subscribeToMessages = useCallback((currentUserId: string) => {
+  // CRITICAL FIX: Supabase Realtime doesn't support complex filters
+  // useGlobalMessageListener now handles all real-time message updates with proper filters
+  // This function is kept for backward compatibility but is now a no-op
+  const subscribeToMessages = useCallback((_currentUserId: string) => {
+    // Clean up any existing legacy channel
     const { channel } = useChatStore.getState()
     if (channel) {
-      supabase.removeChannel(channel)
-    }
-
-    const newChannel = supabase
-      .channel('messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-        },
-        (payload) => {
-          const newMessage = payload.new as DatabaseMessage
-          const { selectedUser: currentSelectedUser, messages: currentMessages } =
-            useChatStore.getState()
-
-          if (
-            currentSelectedUser &&
-            ((newMessage.sender_id === currentUserId &&
-              newMessage.receiver_id === currentSelectedUser.id) ||
-              (newMessage.sender_id === currentSelectedUser.id &&
-                newMessage.receiver_id === currentUserId))
-          ) {
-            const withoutOptimistic = currentMessages.filter(
-              (m) =>
-                !(
-                  m.id.startsWith('temp-') &&
-                  m.sender_id === newMessage.sender_id &&
-                  m.receiver_id === newMessage.receiver_id &&
-                  m.content === newMessage.content
-                )
-            )
-
-            if (!withoutOptimistic.find((m) => m.id === newMessage.id)) {
-              logger.info('useChat:subscribeToMessages', 'New message received')
-              useChatStore.setState({ messages: [...withoutOptimistic, newMessage] })
-            } else {
-              useChatStore.setState({ messages: withoutOptimistic })
-            }
-          }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          logger.info('useChat:subscribeToMessages', 'Successfully subscribed')
-        } else if (status === 'CHANNEL_ERROR') {
-          logger.error('useChat:subscribeToMessages', 'Channel subscription error')
-          useChatStore.setState({ error: 'Failed to subscribe to real-time updates' })
-        }
+      supabase.removeChannel(channel).catch(() => {
+        // Ignore cleanup errors
       })
-
-    useChatStore.setState({ channel: newChannel as RealtimeChannel })
+      useChatStore.setState({ channel: null })
+    }
+    logger.debug('useChat:subscribeToMessages', 'Skipped - global listener handles real-time updates')
   }, [])
 
   const unsubscribeFromMessages = useCallback(() => {
