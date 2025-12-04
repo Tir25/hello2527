@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
 import { Download, FileText, Mic, X, Loader2, AlertCircle } from 'lucide-react'
@@ -29,6 +29,8 @@ export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage 
     hasError: false,
     errorType: null,
   })
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const blobUrlRef = useRef<string | null>(null)
 
   const timestamp = new Date(message.created_at)
   const formattedTime = format(timestamp, 'h:mm a')
@@ -58,6 +60,94 @@ export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage 
     if (mediaType === 'audio') setAudioLoading(false)
   }
 
+  // Get MIME type from URL extension
+  const getMimeTypeFromUrl = (url: string, mediaType: string): string => {
+    const ext = url.split('.').pop()?.toLowerCase().split('?')[0] // Remove query params
+    const mimeMap: Record<string, string> = {
+      // Videos
+      'mp4': 'video/mp4',
+      'webm': 'video/webm',
+      // 'ogg': 'video/ogg', // Duplicate - commented, using audio/ogg
+      'mov': 'video/quicktime',
+      // Audio
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav',
+      'ogg': 'audio/ogg',
+      'm4a': 'audio/mp4',
+      'aac': 'audio/aac',
+      // 'webm': 'audio/webm', // Duplicate - commented, using video/webm
+    }
+
+    if (ext && mimeMap[ext]) {
+      return mimeMap[ext]
+    }
+
+    // Fallback based on media type
+    if (mediaType === 'video') return 'video/mp4'
+    if (mediaType === 'audio') return 'audio/mpeg'
+    return ''
+  }
+
+  // Create blob URL with correct MIME type for video/audio files
+  // This fixes files uploaded without proper Content-Type headers
+  const mediaUrl = message.media_url
+  const mediaType = message.media_type
+
+  useEffect(() => {
+    if (!mediaUrl || !mediaType || (mediaType !== 'video' && mediaType !== 'audio')) {
+      return
+    }
+
+    // Only create blob URL if we don't have one yet
+    if (blobUrlRef.current) return
+
+    const createBlobUrl = async () => {
+      try {
+        const mimeType = getMimeTypeFromUrl(mediaUrl, mediaType)
+        if (!mimeType) {
+          console.warn('Could not determine MIME type for:', mediaUrl)
+          return
+        }
+
+        // Fetch the file
+        const response = await fetch(mediaUrl)
+        if (!response.ok) {
+          console.error('Failed to fetch media:', response.statusText)
+          return
+        }
+
+        // Create blob with correct MIME type
+        const blob = await response.blob()
+        const blobWithType = new Blob([blob], { type: mimeType })
+        const url = URL.createObjectURL(blobWithType)
+        blobUrlRef.current = url
+        setBlobUrl(url)
+      } catch (error) {
+        console.error('Error creating blob URL:', error)
+        // Fallback to original URL if blob creation fails
+      }
+    }
+
+    createBlobUrl()
+
+    // Cleanup blob URL on unmount or when URL changes
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current)
+        blobUrlRef.current = null
+        setBlobUrl(null)
+      }
+    }
+  }, [mediaUrl, mediaType])
+
+  // Use blob URL for video/audio if available, otherwise use original URL
+  const effectiveMediaUrl = useMemo(() => {
+    if ((mediaType === 'video' || mediaType === 'audio') && blobUrl) {
+      return blobUrl
+    }
+    return mediaUrl
+  }, [mediaUrl, mediaType, blobUrl])
+
   const renderMedia = () => {
     // Handle expired media
     if (isExpired) {
@@ -78,10 +168,10 @@ export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage 
     if (!hasMedia) return null
 
     const mediaType = message.media_type
-    const mediaUrl = message.media_url
+    const displayUrl = effectiveMediaUrl || message.media_url
 
     // Defensive check - don't use non-null assertion
-    if (!mediaUrl) return null
+    if (!displayUrl) return null
 
     // Handle media errors - show expired state
     if (mediaError.hasError && mediaError.errorType === mediaType) {
@@ -126,19 +216,34 @@ export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage 
               </div>
             )}
             <img
-              src={mediaUrl}
+              src={displayUrl}
               alt={message.content || 'Shared image attachment'}
               className={`${MEDIA_MAX_WIDTH.full} h-auto rounded-xl cursor-pointer hover:opacity-90 transition-opacity ${imageLoading ? 'opacity-0' : 'opacity-100'
                 }`}
               loading="lazy"
-              onClick={() => setLightboxImage(mediaUrl)}
+              onClick={() => setLightboxImage(displayUrl)}
               onLoad={() => handleMediaLoad('image')}
-              onError={() => handleMediaError('image')}
+              onError={(e) => {
+                console.error('Image load error:', {
+                  src: displayUrl,
+                  naturalWidth: (e.target as HTMLImageElement).naturalWidth,
+                  naturalHeight: (e.target as HTMLImageElement).naturalHeight
+                })
+                handleMediaError('image')
+              }}
             />
             {/* Inline timestamp overlay for image-only messages */}
             {!hasTextContent && (
-              <div className="absolute bottom-2 right-2 rounded-full bg-black/65 text-white text-[10px] px-2 py-0.5 shadow-sm">
-                {formattedTime}
+              <div className="absolute bottom-2 right-2 rounded-full bg-black/65 text-white text-[10px] px-2 py-0.5 shadow-sm flex items-center gap-1">
+                <span>{formattedTime}</span>
+                {isOwn && (
+                  <MessageStatus
+                    status={(['sent', 'delivered', 'seen'].includes(message.status) ? message.status : 'sent') as 'sent' | 'delivered' | 'seen'}
+                    recipientAvatar={recipientProfile?.avatar_url || null}
+                    recipientThemeColor={recipientProfile?.theme_color || 'rgb(139, 92, 246)'}
+                    isLastMessage={isLastMessage}
+                  />
+                )}
               </div>
             )}
           </motion.div>
@@ -164,21 +269,44 @@ export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage 
               </div>
             )}
             <video
-              src={mediaUrl}
+              src={displayUrl}
               controls
+              playsInline
               className={`${MEDIA_MAX_WIDTH.full} h-auto rounded-xl ${videoLoading ? 'opacity-0' : 'opacity-100'
                 }`}
               preload="metadata"
               aria-label="Video message"
               onLoadedMetadata={() => handleMediaLoad('video')}
-              onError={() => handleMediaError('video')}
+              onCanPlay={() => handleMediaLoad('video')}
+              onError={(e) => {
+                const target = e.target as HTMLVideoElement
+                console.error('Video load error:', {
+                  error: target.error,
+                  code: target.error?.code,
+                  message: target.error?.message,
+                  networkState: target.networkState,
+                  readyState: target.readyState,
+                  src: displayUrl,
+                  originalSrc: mediaUrl,
+                  blobUrl: blobUrl || 'none'
+                })
+                handleMediaError('video')
+              }}
             >
               Your browser does not support the video tag.
             </video>
             {/* Inline timestamp overlay for video-only messages */}
             {!hasTextContent && (
-              <div className="absolute bottom-2 right-2 rounded-full bg-black/65 text-white text-[10px] px-2 py-0.5 shadow-sm">
-                {formattedTime}
+              <div className="absolute bottom-2 right-2 rounded-full bg-black/65 text-white text-[10px] px-2 py-0.5 shadow-sm flex items-center gap-1">
+                <span>{formattedTime}</span>
+                {isOwn && (
+                  <MessageStatus
+                    status={(['sent', 'delivered', 'seen'].includes(message.status) ? message.status : 'sent') as 'sent' | 'delivered' | 'seen'}
+                    recipientAvatar={recipientProfile?.avatar_url || null}
+                    recipientThemeColor={recipientProfile?.theme_color || 'rgb(139, 92, 246)'}
+                    isLastMessage={isLastMessage}
+                  />
+                )}
               </div>
             )}
           </motion.div>
@@ -207,32 +335,54 @@ export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage 
               />
             )}
             <audio
-              src={mediaUrl}
+              src={displayUrl}
               controls
               className="flex-1 h-8 min-w-0"
               preload="metadata"
               aria-label="Audio message"
               onLoadedMetadata={() => handleMediaLoad('audio')}
-              onError={() => handleMediaError('audio')}
+              onCanPlay={() => handleMediaLoad('audio')}
+              onError={(e) => {
+                const target = e.target as HTMLAudioElement
+                console.error('Audio load error:', {
+                  error: target.error,
+                  code: target.error?.code,
+                  message: target.error?.message,
+                  networkState: target.networkState,
+                  readyState: target.readyState,
+                  src: displayUrl,
+                  originalSrc: mediaUrl,
+                  blobUrl: blobUrl || 'none'
+                })
+                handleMediaError('audio')
+              }}
             >
               Your browser does not support the audio tag.
             </audio>
             {/* Inline timestamp for audio messages */}
-            <span
-              className={`ml-2 text-[10px] whitespace-nowrap ${isOwn ? 'text-white/80' : 'text-gray-600'}`}
-            >
-              {formattedTime}
-            </span>
+            <div className="ml-2 flex items-center gap-1">
+              <span className={`text-[10px] whitespace-nowrap ${isOwn ? 'text-white/80' : 'text-gray-600'}`}>
+                {formattedTime}
+              </span>
+              {isOwn && (
+                <MessageStatus
+                  status={(['sent', 'delivered', 'seen'].includes(message.status) ? message.status : 'sent') as 'sent' | 'delivered' | 'seen'}
+                  recipientAvatar={recipientProfile?.avatar_url || null}
+                  recipientThemeColor={recipientProfile?.theme_color || 'rgb(139, 92, 246)'}
+                  isLastMessage={isLastMessage}
+                />
+              )}
+            </div>
           </motion.div>
         )
 
       case 'document': {
-        const sanitizedFilename = getSanitizedFilenameFromUrl(mediaUrl)
+        const sanitizedFilename = getSanitizedFilenameFromUrl(displayUrl || '')
         return (
           <motion.a
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            href={mediaUrl}
+            href={mediaUrl || ''}
             target="_blank"
             rel="noopener noreferrer"
             download={sanitizedFilename}
@@ -260,9 +410,19 @@ export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage 
             />
             {/* Inline timestamp for document-only messages */}
             {!hasTextContent && (
-              <span className={`ml-2 text-[10px] whitespace-nowrap ${isOwn ? 'text-white/80' : 'text-gray-600'}`}>
-                {formattedTime}
-              </span>
+              <div className="ml-2 flex items-center gap-1">
+                <span className={`text-[10px] whitespace-nowrap ${isOwn ? 'text-white/80' : 'text-gray-600'}`}>
+                  {formattedTime}
+                </span>
+                {isOwn && (
+                  <MessageStatus
+                    status={(['sent', 'delivered', 'seen'].includes(message.status) ? message.status : 'sent') as 'sent' | 'delivered' | 'seen'}
+                    recipientAvatar={recipientProfile?.avatar_url || null}
+                    recipientThemeColor={recipientProfile?.theme_color || 'rgb(139, 92, 246)'}
+                    isLastMessage={isLastMessage}
+                  />
+                )}
+              </div>
             )}
           </motion.a>
         )
@@ -283,8 +443,8 @@ export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage 
       >
         <div
           className={`max-w-[70%] sm:max-w-[75%] md:max-w-[60%] ${isOwn
-              ? 'bg-gradient-to-r from-violet-500 to-blue-500 text-white rounded-2xl rounded-tr-md'
-              : 'bg-white/30 backdrop-blur-sm text-gray-900 rounded-2xl rounded-tl-md'
+            ? 'bg-gradient-to-r from-violet-500 to-blue-500 text-white rounded-2xl rounded-tr-md'
+            : 'bg-white/30 backdrop-blur-sm text-gray-900 rounded-2xl rounded-tl-md'
             } ${hasMedia && !hasTextContent ? 'p-1.5' : 'px-4 py-2.5'} shadow-lg border border-white/20`}
         >
           {renderMedia()}
@@ -316,8 +476,8 @@ export const MessageBubble = ({ message, isOwn, recipientProfile, isLastMessage 
                 <MessageStatus
                   status={
                     // HIGH #3: Runtime status validation with fallback
-                    (['sent', 'delivered', 'seen'].includes(message.status) 
-                      ? message.status 
+                    (['sent', 'delivered', 'seen'].includes(message.status)
+                      ? message.status
                       : 'sent') as 'sent' | 'delivered' | 'seen'
                   }
                   recipientAvatar={recipientProfile?.avatar_url || null}
