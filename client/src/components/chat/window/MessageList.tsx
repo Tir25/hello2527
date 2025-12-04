@@ -1,13 +1,12 @@
 import { useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import type { DatabaseMessage } from '@/types'
-import { MessageBubble } from '@/components/chat/message/MessageBubble'
-import type { Profile } from '@/lib/services/profile.service'
+import { MessageBubble } from '@/components/features/MessageBubble'
 
 interface MessageListProps {
   messages: DatabaseMessage[]
   currentUserId: string | undefined
-  selectedUser: Profile | null
+  selectedUser?: any // Kept for compatibility but not used
   loading: boolean
   messagesContainerRef: React.RefObject<HTMLDivElement | null>
   messagesEndRef: React.RefObject<HTMLDivElement | null>
@@ -22,7 +21,6 @@ type ScrollBehaviorType = 'auto' | 'smooth'
 export const MessageList = ({
   messages,
   currentUserId,
-  selectedUser,
   loading,
   messagesContainerRef,
   messagesEndRef,
@@ -101,16 +99,13 @@ export const MessageList = ({
 
   return (
     <div>
-      {messages.map((message, index) => {
+      {messages.map((message) => {
         const isOwn = message.sender_id === currentUserId
-        const isLastMessage = index === messages.length - 1
         return (
           <MessageBubble
             key={message.id}
             message={message}
             isOwn={isOwn}
-            recipientProfile={selectedUser}
-            isLastMessage={isLastMessage}
           />
         )
       })}
