@@ -59,6 +59,39 @@ export const ChatWindow = () => {
     // CRITICAL: Mark messages as seen automatically
     useMessageStatus(messageStatusProps)
 
+    // MOBILE FIX: Handle keyboard appearance to keep input visible
+    // When the virtual keyboard appears, the viewport height decreases
+    // This effect ensures the input field scrolls into view proactively
+    useEffect(() => {
+        const handleViewportResize = () => {
+            if (!window.visualViewport) return
+
+            const viewportHeight = window.visualViewport.height
+            const windowHeight = window.innerHeight
+
+            // If viewport is significantly smaller, keyboard is likely showing
+            // Threshold: 70% - if viewport < 70% of window height, keyboard is open
+            if (viewportHeight < windowHeight * 0.7) {
+                // Use requestAnimationFrame to ensure DOM has updated
+                requestAnimationFrame(() => {
+                    const inputElement = document.querySelector('.z-chat-input')
+                    if (inputElement) {
+                        inputElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'nearest',
+                        })
+                    }
+                })
+            }
+        }
+
+        window.visualViewport?.addEventListener('resize', handleViewportResize)
+
+        return () => {
+            window.visualViewport?.removeEventListener('resize', handleViewportResize)
+        }
+    }, [])
+
     // Fetch messages and subscribe when user is selected
     useEffect(() => {
         if (selectedUser && user?.id) {
@@ -82,7 +115,7 @@ export const ChatWindow = () => {
     }
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col h-full chat-container overflow-hidden">
             {/* Header */}
             <div className="flex-none">
                 <ChatHeader

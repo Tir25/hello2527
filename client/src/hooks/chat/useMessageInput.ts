@@ -89,6 +89,30 @@ export const useMessageInput = ({
         }
     }, [content])
 
+    // MOBILE FIX: Scroll input into view when focused to prevent it being hidden by keyboard
+    // This is the PRODUCTION version that's actually used (via ChatWindow/index.tsx)
+    useEffect(() => {
+        const handleFocus = () => {
+            // Small delay to ensure keyboard has started appearing
+            // This prevents the input from being hidden behind the virtual keyboard
+            setTimeout(() => {
+                textareaRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                    inline: 'nearest',
+                })
+            }, 300)
+        }
+
+        const textarea = textareaRef.current
+        textarea?.addEventListener('focus', handleFocus)
+
+        return () => {
+            textarea?.removeEventListener('focus', handleFocus)
+        }
+    }, [])
+
+
     /**
      * Handles sending text or media message
      */
@@ -101,6 +125,8 @@ export const useMessageInput = ({
         // Prevent double-click
         if (isUploading) return
 
+        let messageSent = false
+
         // If there's a file preview, upload and send
         if (filePreview && !isUploading) {
             await handleUploadAndSend(filePreview.file, filePreview.type, (mediaUrl, mediaType) => {
@@ -109,6 +135,7 @@ export const useMessageInput = ({
                 if (textareaRef.current) {
                     textareaRef.current.style.height = 'auto'
                 }
+                messageSent = true
             })
         } else if (trimmedContent && !disabled) {
             // Send text-only message
@@ -117,6 +144,15 @@ export const useMessageInput = ({
             if (textareaRef.current) {
                 textareaRef.current.style.height = 'auto'
             }
+            messageSent = true
+        }
+
+        // UX ENHANCEMENT: Auto-focus input after sending for better mobile experience
+        // Only focus if a message was actually sent (prevents focus on empty sends or early returns)
+        if (messageSent) {
+            setTimeout(() => {
+                textareaRef.current?.focus()
+            }, 100)
         }
     }
 

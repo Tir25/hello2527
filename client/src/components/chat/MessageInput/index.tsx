@@ -64,7 +64,9 @@ export const MessageInput = ({
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="z-chat-input flex-shrink-0 backdrop-blur-xl bg-white/70 border-t border-white/10 px-2 pt-1 pb-safe safe-bottom mb-1 md:mb-1"
+            className="z-chat-input flex-shrink-0 backdrop-blur-xl bg-white/70 border-t border-white/10 px-2 pt-1 safe-bottom mb-1 md:mb-1"
+            role="region"
+            aria-label="Message input area"
         >
             <div className="flex flex-col gap-2 max-w-3xl mx-auto">
                 {/* File Preview */}

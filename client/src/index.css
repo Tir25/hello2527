@@ -132,6 +132,22 @@ body {
   padding-bottom: max(env(safe-area-inset-bottom), 1rem);
 }
 
+/* MOBILE FIX: Chat container with dynamic viewport height for keyboard handling */
+.chat-container {
+  height: 100vh;
+  /* Use dynamic viewport height when available - adjusts for mobile keyboard */
+  height: 100dvh;
+}
+
+/* MOBILE FIX: Enhanced positioning for chat input to stay visible with keyboard */
+.z-chat-input {
+  position: -webkit-sticky;
+  /* Safari/iOS compatibility */
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
 /* Typing Indicator Animation */
 .typing-dots {
   display: inline-flex;
@@ -168,12 +184,14 @@ body {
 
 /* LOW FIX #9: Refined animation - reduced translateY from -10px to -6px for smoother motion */
 @keyframes typing-wave {
+
   0%,
   60%,
   100% {
     transform: translateY(0);
     opacity: 0.7;
   }
+
   30% {
     transform: translateY(-6px);
     opacity: 1;
@@ -182,11 +200,13 @@ body {
 
 /* LOW FIX #9: Reduced motion animation - only opacity changes, no transform */
 @keyframes typing-wave-reduced {
+
   0%,
   60%,
   100% {
     opacity: 0.5;
   }
+
   30% {
     opacity: 1;
   }

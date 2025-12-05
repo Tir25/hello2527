@@ -12,6 +12,7 @@ export default defineConfig({
     },
     server: {
         port: 3000,
+        host: '0.0.0.0', // Listen on all network interfaces for mobile testing
         open: true,
         // Proxy Supabase requests to fix cookie domain issues
         // This routes all Supabase requests through the dev server,
