@@ -1,4 +1,0 @@
-# SPA fallback - redirect all routes to index.html
-# This ensures client-side routing works on refresh
-/*    /index.html   200
-

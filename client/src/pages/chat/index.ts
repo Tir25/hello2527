@@ -1,2 +1,0 @@
-export { ChatLayout } from './ChatLayout'
-
