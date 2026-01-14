@@ -1,0 +1,92 @@
+/**
+ * Story Feed Styles
+ */
+
+.story-feed-container {
+    width: 100%;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+}
+
+.story-feed {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 16px;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+
+    /* Mobile scroll optimization */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    /* GPU acceleration for smooth scroll */
+    transform: translateZ(0);
+}
+
+.story-feed::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
+}
+
+/* Loading skeleton */
+.story-skeleton {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.skeleton-bubble {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(90deg,
+            var(--color-surface, #374151) 25%,
+            var(--color-surface-hover, #4b5563) 50%,
+            var(--color-surface, #374151) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+.skeleton-name {
+    width: 48px;
+    height: 10px;
+    border-radius: 4px;
+    background: var(--color-surface, #374151);
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Empty state */
+.story-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 24px;
+    color: var(--color-text-secondary, #9ca3af);
+    text-align: center;
+}
+
+.story-empty p {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.story-empty span {
+    font-size: 12px;
+    opacity: 0.7;
+}

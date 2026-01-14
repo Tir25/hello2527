@@ -1,0 +1,449 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: white;
+  color: #111827;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Custom utilities */
+.glass-effect {
+  backdrop-filter: blur(24px);
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.smooth-transition {
+  transition: all 300ms ease-in-out;
+}
+
+/* Responsive Typography Utilities */
+.text-responsive-xs {
+  font-size: 0.75rem;
+  /* 12px */
+}
+
+@media (min-width: 640px) {
+  .text-responsive-xs {
+    font-size: 0.875rem;
+    /* 14px */
+  }
+}
+
+.text-responsive-sm {
+  font-size: 0.875rem;
+  /* 14px */
+}
+
+@media (min-width: 640px) {
+  .text-responsive-sm {
+    font-size: 1rem;
+    /* 16px */
+  }
+}
+
+.text-responsive-base {
+  font-size: 1rem;
+  /* 16px */
+}
+
+@media (min-width: 640px) {
+  .text-responsive-base {
+    font-size: 1.125rem;
+    /* 18px */
+  }
+}
+
+.text-responsive-lg {
+  font-size: 1.125rem;
+  /* 18px */
+}
+
+@media (min-width: 640px) {
+  .text-responsive-lg {
+    font-size: 1.25rem;
+    /* 20px */
+  }
+}
+
+.text-responsive-xl {
+  font-size: 1.25rem;
+  /* 20px */
+}
+
+@media (min-width: 640px) {
+  .text-responsive-xl {
+    font-size: 1.5rem;
+    /* 24px */
+  }
+}
+
+/* Sidebar Scrollbar Styles */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(147, 51, 234, 0.3);
+  border-radius: 3px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(147, 51, 234, 0.5);
+}
+
+/* Messages Scrollbar Styles */
+.messages-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages-scroll::-webkit-scrollbar-thumb {
+  background: rgba(147, 51, 234, 0.2);
+  border-radius: 3px;
+}
+
+.messages-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(147, 51, 234, 0.4);
+}
+
+/* Safe area utility for bottom insets (mobile navigation bars, notches, etc.) */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+/* MOBILE FIX: Enhanced chat container with fallbacks for all browsers */
+.chat-container {
+  /* Base fallback for older browsers */
+  height: 100vh;
+  /* iOS Safari fallback - accounts for browser chrome and keyboard */
+  height: -webkit-fill-available;
+  /* Modern browsers - dynamic viewport height adjusts for keyboard */
+  height: 100dvh;
+  /* Flex layout ensures proper stacking */
+  display: flex;
+  flex-direction: column;
+  /* Prevent content overflow */
+  overflow: hidden;
+}
+
+/* MOBILE FIX: Chat input with enhanced keyboard-aware positioning */
+.z-chat-input {
+  position: -webkit-sticky;
+  position: sticky;
+  /* Stick to bottom, accounting for safe area */
+  bottom: 0;
+  bottom: env(safe-area-inset-bottom, 0);
+  z-index: 10;
+  /* GPU acceleration for smoother keyboard transitions */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  /* Prevent layout shift on keyboard open/close */
+  flex-shrink: 0;
+}
+
+/* Typing Indicator Animation */
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #6b7280;
+  animation: typing-wave 1.4s ease-in-out infinite;
+}
+
+/* LOW FIX #9: Support for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot {
+    animation: typing-wave-reduced 1.4s ease-in-out infinite;
+  }
+}
+
+.typing-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* LOW FIX #9: Refined animation - reduced translateY from -10px to -6px for smoother motion */
+@keyframes typing-wave {
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+/* LOW FIX #9: Reduced motion animation - only opacity changes, no transform */
+@keyframes typing-wave-reduced {
+
+  0%,
+  60%,
+  100% {
+    opacity: 0.5;
+  }
+
+  30% {
+    opacity: 1;
+  }
+}
+
+/* ========================================
+   MOBILE TOUCH & INTERACTION UTILITIES
+   ======================================== */
+
+/* Touch-friendly tap targets (WCAG 2.1 Level AAA: 44px minimum) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Larger touch targets for primary actions */
+.touch-target-lg {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* Touch feedback utility - adds active state feedback */
+.touch-feedback {
+  transition: transform 100ms ease-out, background-color 150ms ease-out;
+}
+
+.touch-feedback:active {
+  transform: scale(0.97);
+}
+
+/* ========================================
+   GPU ACCELERATION UTILITIES
+   ======================================== */
+
+/* GPU-accelerated transforms for smoother animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Will-change hints for anticipated animations */
+.will-animate-transform {
+  will-change: transform;
+}
+
+.will-animate-opacity {
+  will-change: opacity;
+}
+
+.will-animate-all {
+  will-change: transform, opacity;
+}
+
+/* ========================================
+   SAFE AREA UTILITIES (Mobile Notches/Bars)
+   ======================================== */
+
+/* All edges safe area */
+.safe-all {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+/* Individual edge safe areas */
+.safe-top {
+  padding-top: max(env(safe-area-inset-top), 0.5rem);
+}
+
+.safe-right {
+  padding-right: max(env(safe-area-inset-right), 0.5rem);
+}
+
+.safe-left {
+  padding-left: max(env(safe-area-inset-left), 0.5rem);
+}
+
+/* Bottom padding for safe area (notches, home bars, etc.) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Combined bottom padding with safe area + minimum padding */
+.pb-safe-min {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+/* ========================================
+   RESPONSIVE PADDING UTILITIES
+   ======================================== */
+
+/* Mobile-first padding that scales up on larger screens */
+.p-mobile {
+  padding: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .p-mobile {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .p-mobile {
+    padding: 1.5rem;
+  }
+}
+
+/* Horizontal padding for content containers */
+.px-mobile {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .px-mobile {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .px-mobile {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+/* ========================================
+   REDUCED MOTION SUPPORT
+   ======================================== */
+
+/* Disable all animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-optimized,
+  .animate-optimized * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Keep essential state changes instant */
+  .transition-safe {
+    transition: none !important;
+  }
+
+  /* Blur effects can cause performance issues */
+  .blur-safe {
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* ========================================
+   MOBILE SCROLLING IMPROVEMENTS
+   ======================================== */
+
+/* Smooth momentum scrolling for iOS */
+.scroll-smooth-mobile {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Hide scrollbars on mobile while maintaining scroll functionality */
+.scrollbar-hide-mobile {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide-mobile::-webkit-scrollbar {
+  display: none;
+}
+
+/* ========================================
+   MOBILE LAYOUT HELPERS
+   ======================================== */
+
+/* Full viewport height accounting for mobile browser chrome */
+.h-screen-mobile {
+  height: 100vh;
+  height: 100dvh;
+  height: -webkit-fill-available;
+}
+
+/* Minimum height for full viewport */
+.min-h-screen-mobile {
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+
+/* ========================================
+   LOADING STATE UTILITIES
+   ======================================== */
+
+/* Skeleton loading shimmer effect */
+.skeleton-shimmer {
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      rgba(255, 255, 255, 0) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Disable skeleton animation for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
