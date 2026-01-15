@@ -18,6 +18,10 @@ interface StoryOverlaysProps {
     isOwnStory?: boolean
     /** Callback when poll loading state changes - use to pause story timer */
     onPollLoadingChange?: (isLoading: boolean) => void
+    /** Callback when location sticker is clicked */
+    onLocationClick?: (location: string) => void
+    /** Callback when mention sticker is clicked */
+    onMentionClick?: (username: string) => void
 }
 
 /** Icon mapping for non-poll sticker types */
@@ -46,7 +50,9 @@ export const StoryOverlays = memo(function StoryOverlays({
     textOverlays = [],
     stickers = [],
     isOwnStory = false,
-    onPollLoadingChange
+    onPollLoadingChange,
+    onLocationClick,
+    onMentionClick
 }: StoryOverlaysProps) {
     if (textOverlays.length === 0 && stickers.length === 0) {
         return null
@@ -73,7 +79,12 @@ export const StoryOverlays = memo(function StoryOverlays({
                         onLoadingChange={onPollLoadingChange}
                     />
                 ) : (
-                    <StickerItem key={s.id} sticker={s} />
+                    <StickerItem
+                        key={s.id}
+                        sticker={s}
+                        onLocationClick={onLocationClick}
+                        onMentionClick={onMentionClick}
+                    />
                 )
             ))}
         </div>
@@ -107,17 +118,57 @@ const TextOverlayItem = memo(function TextOverlayItem({
 })
 
 /** Individual sticker item (non-poll) */
-const StickerItem = memo(function StickerItem({
-    sticker
-}: {
+interface StickerItemProps {
     sticker: Sticker
-}) {
+    onLocationClick?: (location: string) => void
+    onMentionClick?: (username: string) => void
+}
+
+const StickerItem = memo(function StickerItem({
+    sticker,
+    onLocationClick,
+    onMentionClick
+}: StickerItemProps) {
     if (sticker.type === 'poll') return null // Handled by PollDisplay
 
     const Icon = STICKER_ICONS[sticker.type as keyof typeof STICKER_ICONS]
     const colorClass = STICKER_COLORS[sticker.type as keyof typeof STICKER_COLORS]
 
     if (!Icon) return null
+
+    // Determine if this sticker type is interactive
+    const isInteractive = sticker.type === 'location' || sticker.type === 'mention'
+
+    // Parse location data (handle both old string and new JSON format)
+    const getDisplayText = () => {
+        if (sticker.type === 'location') {
+            try {
+                const parsed = JSON.parse(sticker.data)
+                return parsed.name || sticker.data
+            } catch {
+                return sticker.data // Old format: plain string
+            }
+        }
+        return sticker.data
+    }
+
+    const handleClick = () => {
+        if (sticker.type === 'location' && onLocationClick) {
+            try {
+                const parsed = JSON.parse(sticker.data)
+                // Pass place_id or name for search
+                onLocationClick(parsed.placeId || parsed.name || sticker.data)
+            } catch {
+                onLocationClick(sticker.data) // Old format
+            }
+        } else if (sticker.type === 'mention' && onMentionClick) {
+            // Extract username from @username format
+            const username = sticker.data.startsWith('@')
+                ? sticker.data.slice(1)
+                : sticker.data
+            onMentionClick(username)
+        }
+    }
 
     return (
         <div
@@ -126,10 +177,19 @@ const StickerItem = memo(function StickerItem({
                 transform: `translate(${sticker.x}px, ${sticker.y}px) scale(${sticker.scale || 1}) rotate(${sticker.rotation || 0}deg)`
             }}
         >
-            <div className="bg-white/95 backdrop-blur-sm text-black px-4 py-2 rounded-xl shadow-xl font-bold flex items-center gap-2">
+            <button
+                onClick={isInteractive ? handleClick : undefined}
+                disabled={!isInteractive}
+                className={`
+                    bg-white/95 backdrop-blur-sm text-black px-4 py-2 rounded-xl shadow-xl 
+                    font-bold flex items-center gap-2
+                    ${isInteractive ? 'pointer-events-auto cursor-pointer hover:bg-white active:scale-95 transition-all' : ''}
+                `}
+                aria-label={isInteractive ? `View ${sticker.type}: ${getDisplayText()}` : undefined}
+            >
                 <Icon className={`w-5 h-5 ${colorClass}`} />
-                <span className="text-sm">{sticker.data}</span>
-            </div>
+                <span className="text-sm">{getDisplayText()}</span>
+            </button>
         </div>
     )
 })

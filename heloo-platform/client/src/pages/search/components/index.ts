@@ -11,3 +11,5 @@ export { UserListItem } from './UserListItem'
 export { SearchSkeleton } from './SearchSkeleton'
 export { SearchEmptyState } from './SearchEmptyState'
 export { TypeaheadDropdown } from './TypeaheadDropdown'
+export { LocationResults } from './LocationResults'
+

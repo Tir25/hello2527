@@ -6,6 +6,7 @@
  */
 
 import { memo, useState, useCallback, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, Send, Eye } from 'lucide-react'
 import { useStoryViewer, useStoryMedia, useStoryProgress, useStoryNavigation, useStoryPreload } from '@/hooks/stories'
@@ -24,6 +25,7 @@ import type { StoryReplyPayload } from '@/types/database.types'
  * Full-screen story viewer component
  */
 export const StoryViewer = memo(function StoryViewer() {
+    const navigate = useNavigate()
     const {
         isOpen, isPaused, isMuted,
         currentGroup, currentStory, currentStoryIndex, currentGroupIndex, duration, close
@@ -64,10 +66,24 @@ export const StoryViewer = memo(function StoryViewer() {
     const [showViewersList, setShowViewersList] = useState(false)
     const [viewers, setViewers] = useState<StoryViewerInfo[]>([])
     const [replyMessage, setReplyMessage] = useState('')
+
     // Callback to pause story timer while poll is loading
     const handlePollLoadingChange = useCallback((isLoading: boolean) => {
         setPollLoading(isLoading)
     }, [])
+
+    // Sticker click handlers
+    const handleLocationClick = useCallback((location: string) => {
+        close()
+        // Navigate to search with location query
+        navigate(`/search?q=${encodeURIComponent(location)}&type=places`)
+    }, [close, navigate])
+
+    const handleMentionClick = useCallback((username: string) => {
+        close()
+        // Navigate to user profile
+        navigate(`/${username}`)
+    }, [close, navigate])
 
     // Auto-fetch viewers for own stories
     useEffect(() => {
@@ -173,6 +189,8 @@ export const StoryViewer = memo(function StoryViewer() {
                         stickers={currentStory.stickers}
                         isOwnStory={isOwnStory}
                         onPollLoadingChange={handlePollLoadingChange}
+                        onLocationClick={handleLocationClick}
+                        onMentionClick={handleMentionClick}
                     />
 
                     {/* Progress */}

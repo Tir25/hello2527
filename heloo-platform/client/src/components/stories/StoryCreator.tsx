@@ -118,6 +118,16 @@ export const StoryCreator = memo(function StoryCreator({ isOpen, onClose, onSucc
                                     ))}
                                     {editor.stickers.map(s => {
                                         const Icon = STICKER_ICONS[s.type]
+                                        // Parse display text (handle JSON for location stickers)
+                                        let displayText = s.data
+                                        if (s.type === 'location') {
+                                            try {
+                                                const parsed = JSON.parse(s.data)
+                                                displayText = parsed.name || s.data
+                                            } catch {
+                                                displayText = s.data
+                                            }
+                                        }
                                         return (
                                             <DraggableOverlay
                                                 key={s.id}
@@ -130,7 +140,7 @@ export const StoryCreator = memo(function StoryCreator({ isOpen, onClose, onSucc
                                             >
                                                 <div className="bg-white/95 backdrop-blur-sm text-black px-4 py-2 rounded-xl shadow-xl font-bold flex items-center gap-2">
                                                     <Icon className={`w-5 h-5 ${STICKER_COLORS[s.type]}`} />
-                                                    {s.data}
+                                                    {displayText}
                                                 </div>
                                             </DraggableOverlay>
                                         )
@@ -218,7 +228,16 @@ export const StoryCreator = memo(function StoryCreator({ isOpen, onClose, onSucc
                                 isOpen={editor.isLocationPickerOpen}
                                 onClose={() => editor.setIsLocationPickerOpen(false)}
                                 onSelect={(location) => {
-                                    editor.handleAddSticker({ type: 'location', x: 0, y: 0, data: location })
+                                    // Serialize LocationData to JSON for storage
+                                    const locationData = JSON.stringify({
+                                        name: location.name,
+                                        displayName: location.displayName,
+                                        placeId: location.placeId,
+                                        lat: location.lat,
+                                        lng: location.lng,
+                                        type: location.type
+                                    })
+                                    editor.handleAddSticker({ type: 'location', x: 0, y: 0, data: locationData })
                                     editor.setIsLocationPickerOpen(false)
                                 }}
                             />
