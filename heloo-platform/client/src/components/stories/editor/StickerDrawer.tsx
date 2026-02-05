@@ -18,6 +18,8 @@ interface StickerDrawerProps {
     onOpenLocationPicker?: () => void
     onOpenMentionPicker?: () => void
     onOpenPollCreator?: () => void
+    onOpenCountdownPicker?: () => void
+    onOpenQuestionPicker?: () => void
 }
 
 /** Icon mapping for sticker types */
@@ -39,7 +41,9 @@ export const StickerDrawer = memo(function StickerDrawer({
     onAdd,
     onOpenLocationPicker,
     onOpenMentionPicker,
-    onOpenPollCreator
+    onOpenPollCreator,
+    onOpenCountdownPicker,
+    onOpenQuestionPicker
 }: StickerDrawerProps) {
     const handleStickerClick = useCallback((type: Sticker['type'], defaultData: string) => {
         // Route to picker for interactive stickers
@@ -58,11 +62,21 @@ export const StickerDrawer = memo(function StickerDrawer({
             onOpenPollCreator()
             return
         }
+        if (type === 'countdown' && onOpenCountdownPicker) {
+            onClose()
+            onOpenCountdownPicker()
+            return
+        }
+        if (type === 'question' && onOpenQuestionPicker) {
+            onClose()
+            onOpenQuestionPicker()
+            return
+        }
 
         // Direct add for simple stickers
         onAdd({ type, x: 0, y: 0, data: defaultData })
         onClose()
-    }, [onClose, onAdd, onOpenLocationPicker, onOpenMentionPicker, onOpenPollCreator])
+    }, [onClose, onAdd, onOpenLocationPicker, onOpenMentionPicker, onOpenPollCreator, onOpenCountdownPicker, onOpenQuestionPicker])
 
     const interactiveStickers = getStickersByCategory('interactive')
     const decorativeStickers = getStickersByCategory('decorative')

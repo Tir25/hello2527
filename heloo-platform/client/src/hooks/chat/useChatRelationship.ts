@@ -15,6 +15,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { profileService } from '@/lib/services/profile.service'
 import { useChatStore } from '@/store/chatStore'
 import { logger } from '@/lib/logger'
+import type { RelationshipStatus } from '@/features/profile/types/profile.types'
 
 interface UseChatRelationshipProps {
     selectedUserId: string | null | undefined
@@ -26,6 +27,10 @@ interface UseChatRelationshipReturn {
     amIFollowing: boolean
     isFollowingMe: boolean
     isBlocked: boolean
+    relationshipStatus: RelationshipStatus
+    relationshipId?: string
+    isRequester: boolean
+    isBlocker: boolean
     relationshipLoading: boolean
     canChat: boolean
     checkRelationship: () => Promise<void>
@@ -40,6 +45,10 @@ export const useChatRelationship = ({
     const [amIFollowing, setAmIFollowing] = useState(false)
     const [isFollowingMe, setIsFollowingMe] = useState(false)
     const [isBlocked, setIsBlocked] = useState(false)
+    const [relationshipStatus, setRelationshipStatus] = useState<RelationshipStatus>('none')
+    const [relationshipId, setRelationshipId] = useState<string | undefined>(undefined)
+    const [isRequester, setIsRequester] = useState(false)
+    const [isBlocker, setIsBlocker] = useState(false)
     const [relationshipLoading, setRelationshipLoading] = useState(false)
 
     const fetchMessages = useChatStore((state) => state.fetchMessages)
@@ -59,6 +68,10 @@ export const useChatRelationship = ({
             setAmIFollowing(false)
             setIsFollowingMe(false)
             setIsBlocked(false)
+            setRelationshipStatus('none')
+            setRelationshipId(undefined)
+            setIsRequester(false)
+            setIsBlocker(false)
             return
         }
 
@@ -66,6 +79,10 @@ export const useChatRelationship = ({
             setAmIFollowing(false)
             setIsFollowingMe(false)
             setIsBlocked(false)
+            setRelationshipStatus('none')
+            setRelationshipId(undefined)
+            setIsRequester(false)
+            setIsBlocker(false)
             return
         }
 
@@ -76,13 +93,22 @@ export const useChatRelationship = ({
             if (result.success && result.data) {
                 setAmIFollowing(result.data.amIFollowing ?? false)
                 setIsFollowingMe(result.data.isFollowingMe ?? false)
-                setIsBlocked(result.data.relationship_status === 'blocked')
+                const status = result.data.relationship_status ?? 'none'
+                setRelationshipStatus(status)
+                setIsBlocked(status === 'blocked')
+                setRelationshipId(result.data.relationship_id ?? undefined)
+                setIsRequester(result.data.is_requester ?? false)
+                setIsBlocker(result.data.is_blocker ?? false)
             }
         } catch (error) {
             logger.error('useChatRelationship:checkRelationship', 'Failed to check relationship', error)
             setAmIFollowing(false)
             setIsFollowingMe(false)
             setIsBlocked(false)
+            setRelationshipStatus('none')
+            setRelationshipId(undefined)
+            setIsRequester(false)
+            setIsBlocker(false)
         } finally {
             setRelationshipLoading(false)
         }
@@ -112,6 +138,10 @@ export const useChatRelationship = ({
             setAmIFollowing(false)
             setIsFollowingMe(false)
             setIsBlocked(false)
+            setRelationshipStatus('none')
+            setRelationshipId(undefined)
+            setIsRequester(false)
+            setIsBlocker(false)
         }
     }, [selectedUserId])
 
@@ -124,6 +154,10 @@ export const useChatRelationship = ({
         amIFollowing,
         isFollowingMe,
         isBlocked,
+        relationshipStatus,
+        relationshipId,
+        isRequester,
+        isBlocker,
         relationshipLoading,
         canChat,
         checkRelationship,

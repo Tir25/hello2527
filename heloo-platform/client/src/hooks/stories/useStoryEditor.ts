@@ -43,6 +43,10 @@ interface UseStoryEditorReturn {
     setIsMentionPickerOpen: (open: boolean) => void
     isPollCreatorOpen: boolean
     setIsPollCreatorOpen: (open: boolean) => void
+    isCountdownPickerOpen: boolean
+    setIsCountdownPickerOpen: (open: boolean) => void
+    isQuestionPickerOpen: boolean
+    setIsQuestionPickerOpen: (open: boolean) => void
     // Audience
     audienceType: 'public' | 'close_friends'
     setAudienceType: (type: 'public' | 'close_friends') => void
@@ -88,6 +92,8 @@ export function useStoryEditor(): UseStoryEditorReturn {
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false)
     const [isMentionPickerOpen, setIsMentionPickerOpen] = useState(false)
     const [isPollCreatorOpen, setIsPollCreatorOpen] = useState(false)
+    const [isCountdownPickerOpen, setIsCountdownPickerOpen] = useState(false)
+    const [isQuestionPickerOpen, setIsQuestionPickerOpen] = useState(false)
 
     // Reset all state
     const resetState = useCallback(() => {
@@ -161,6 +167,8 @@ export function useStoryEditor(): UseStoryEditorReturn {
         isLocationPickerOpen, setIsLocationPickerOpen,
         isMentionPickerOpen, setIsMentionPickerOpen,
         isPollCreatorOpen, setIsPollCreatorOpen,
+        isCountdownPickerOpen, setIsCountdownPickerOpen,
+        isQuestionPickerOpen, setIsQuestionPickerOpen,
         audienceType, setAudienceType,
         handleCapture, handleGalleryUpload,
         handleAddText, handleTextDrag, handleDeleteText,

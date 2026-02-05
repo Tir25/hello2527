@@ -77,6 +77,21 @@ export function useStoryViewer() {
         if (!viewer.isOpen) return
 
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Don't handle keyboard shortcuts when user is typing in an input/textarea
+            const target = e.target as HTMLElement
+            const isTyping = target.tagName === 'INPUT' || 
+                            target.tagName === 'TEXTAREA' || 
+                            target.isContentEditable
+
+            if (isTyping) {
+                // Only allow Escape to close viewer when typing
+                if (e.key === 'Escape') {
+                    // Blur the input first, don't close viewer
+                    target.blur()
+                }
+                return
+            }
+
             switch (e.key) {
                 case 'ArrowLeft':
                     prevStory()

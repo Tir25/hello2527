@@ -39,11 +39,7 @@ const LayoutContent = ({ children }: { children: ReactNode }) => {
         </Suspense>
       )}
 
-      {showOrb && (
-        <div className="md:hidden">
-          <NavigationOrb />
-        </div>
-      )}
+      {showOrb && <NavigationOrb />}
     </div>
   )
 }

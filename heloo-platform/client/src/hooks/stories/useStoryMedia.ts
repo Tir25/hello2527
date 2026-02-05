@@ -12,6 +12,8 @@ interface UseStoryMediaProps {
     isOpen: boolean
     isPaused: boolean
     currentStory: Story | null
+    /** When true, pause video (e.g., user is interacting with question input) */
+    pollLoading?: boolean
 }
 
 interface UseStoryMediaReturn {
@@ -26,7 +28,8 @@ interface UseStoryMediaReturn {
 export function useStoryMedia({
     isOpen,
     isPaused,
-    currentStory
+    currentStory,
+    pollLoading = false
 }: UseStoryMediaProps): UseStoryMediaReturn {
     const [mediaReady, setMediaReady] = useState(false)
     const hasPlayedRef = useRef(false)
@@ -59,7 +62,8 @@ export function useStoryMedia({
     useEffect(() => {
         if (!isOpen || !currentStory?.id || !mediaReady) return
 
-        if (isPaused) {
+        // Pause if isPaused OR pollLoading (user interacting with question)
+        if (isPaused || pollLoading) {
             videoRef.current?.pause()
         } else if (!hasPlayedRef.current) {
             hasPlayedRef.current = true
@@ -67,7 +71,7 @@ export function useStoryMedia({
         } else {
             videoRef.current?.play().catch(() => { })
         }
-    }, [isOpen, currentStory?.id, mediaReady, isPaused])
+    }, [isOpen, currentStory?.id, mediaReady, isPaused, pollLoading])
 
     const handleMediaLoaded = useCallback(() => {
         setMediaReady(true)

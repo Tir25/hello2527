@@ -25,6 +25,20 @@ interface UseStoryNavigationReturn {
  */
 export function useStoryNavigation(): UseStoryNavigationReturn {
     const handleTap = useCallback((e: React.MouseEvent) => {
+        // Safety check: Don't navigate if click originated from an interactive element
+        // This catches cases where stopPropagation might have failed
+        const target = e.target as HTMLElement
+        const isInteractiveElement = 
+            target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'BUTTON' ||
+            target.closest('input, textarea, button, [role="button"]') ||
+            target.closest('[data-story-interactive="true"]')
+        
+        if (isInteractiveElement) {
+            return
+        }
+
         const rect = e.currentTarget.getBoundingClientRect()
         const xPercent = (e.clientX - rect.left) / rect.width
 

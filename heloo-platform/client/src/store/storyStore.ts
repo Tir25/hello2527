@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand'
+import { logger } from '@/lib/logger'
 import type { StoryGroup, ViewerState } from '@/types'
 
 interface StoryState {
@@ -28,7 +29,7 @@ interface StoryState {
 
     // Viewer actions
     openViewer: (groupIndex: number, storyIndex?: number) => void
-    closeViewer: () => void
+    closeViewer: (reason?: string) => void
     nextStory: () => boolean
     prevStory: () => boolean
     nextGroup: () => boolean
@@ -79,9 +80,18 @@ export const useStoryStore = create<StoryState>((set, get) => ({
         }
     }),
 
-    closeViewer: () => set((state) => ({
-        viewer: { ...state.viewer, isOpen: false }
-    })),
+    closeViewer: (reason?: string) => set((state) => {
+        if (import.meta.env.DEV) {
+            logger.debug('storyStore:closeViewer', 'Story viewer closed', {
+                reason: reason ?? 'unknown',
+                viewer: state.viewer,
+                stack: new Error().stack,
+            })
+        }
+        return {
+            viewer: { ...state.viewer, isOpen: false }
+        }
+    }),
 
     nextStory: () => {
         const { groups, viewer } = get()

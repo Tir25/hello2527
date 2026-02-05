@@ -171,6 +171,7 @@ export const PollDisplay = memo(function PollDisplay({
         <div
             className="absolute inset-0 flex items-center justify-center pointer-events-auto"
             style={{ transform: `translate(${x}px, ${y}px)` }}
+            data-story-interactive="true"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => e.stopPropagation()}

@@ -5,7 +5,7 @@
  * @module components/stories/StoryViewer
  */
 
-import { memo, useState, useCallback, useEffect } from 'react'
+import { memo, useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, Send, Eye } from 'lucide-react'
@@ -34,21 +34,46 @@ export const StoryViewer = memo(function StoryViewer() {
     const { user } = useAuthStore()
     const isOwnStory = currentGroup?.userId === user?.id
 
-    // Poll loading state - declared before hooks that need it
+    // Poll/interaction loading states - declared before hooks that need them
     const [pollLoading, setPollLoading] = useState(false)
+    const [isReplyInputFocused, setIsReplyInputFocused] = useState(false)
 
     // Custom hooks for modularity
     const { mediaReady, videoRef, handleMediaLoaded } = useStoryMedia({
-        isOpen, isPaused, currentStory
+        isOpen, isPaused, currentStory, pollLoading
     })
+
+    // Pause story timer when interacting with stickers OR typing a reply
+    const shouldPauseForInteraction = pollLoading || isReplyInputFocused
 
     const { progress } = useStoryProgress({
         isOpen, isPaused, duration,
         currentStory, currentGroup, currentStoryIndex,
-        mediaReady, pollLoading
+        mediaReady, pollLoading: shouldPauseForInteraction
     })
 
     const { handleTap } = useStoryNavigation()
+    const ignoreNextTapRef = useRef(false)
+
+    const handleTapWithGuard = useCallback((e: React.MouseEvent) => {
+        if (ignoreNextTapRef.current) {
+            ignoreNextTapRef.current = false
+            return
+        }
+        handleTap(e)
+    }, [handleTap])
+
+    const handlePointerDownCapture = useCallback((e: React.PointerEvent) => {
+        const target = e.target as HTMLElement
+        const isInteractiveElement =
+            target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'BUTTON' ||
+            target.closest('input, textarea, button, [role="button"]') ||
+            target.closest('[data-story-interactive="true"]')
+
+        ignoreNextTapRef.current = isInteractiveElement
+    }, [])
 
     // Preload adjacent stories
     const groups = useStoryStore((s) => s.groups)
@@ -153,7 +178,10 @@ export const StoryViewer = memo(function StoryViewer() {
                 transition={{ duration: 0.15 }}
                 className="fixed inset-0 z-50 bg-black flex items-center justify-center"
             >
-                <div className="relative w-full h-full max-w-md bg-zinc-900 overflow-hidden shadow-2xl md:rounded-xl md:h-[90vh]">
+                <div
+                    className="relative w-full h-full max-w-md bg-zinc-900 overflow-hidden shadow-2xl md:rounded-xl md:h-[90vh]"
+                    onPointerDownCapture={handlePointerDownCapture}
+                >
                     {/* Media */}
                     {/* Loading skeleton */}
                     {!mediaReady && (
@@ -207,11 +235,14 @@ export const StoryViewer = memo(function StoryViewer() {
                     />
 
                     {/* Tap zones: 25% prev | 50% pause/play | 25% next */}
+                    {/* Disabled when user is interacting with stickers (prevents accidental navigation) */}
                     <div
-                        className="absolute inset-0 z-10 flex touch-manipulation cursor-pointer"
-                        onClick={handleTap}
+                        className={`absolute inset-0 z-10 flex touch-manipulation cursor-pointer ${
+                            shouldPauseForInteraction ? 'pointer-events-none' : ''
+                        }`}
+                        onClick={shouldPauseForInteraction ? undefined : handleTapWithGuard}
                         role="button"
-                        tabIndex={0}
+                        tabIndex={shouldPauseForInteraction ? -1 : 0}
                         aria-label="Story navigation - tap left for previous, center for pause/play, right for next"
                     >
                         <div className="w-1/4 h-full" aria-hidden="true" />
@@ -243,7 +274,13 @@ export const StoryViewer = memo(function StoryViewer() {
                                     onChange={(e) => setReplyMessage(e.target.value)}
                                     placeholder="Send a message..."
                                     className="flex-1 bg-white/10 border border-white/20 rounded-full py-3 px-5 text-white text-sm placeholder:text-white/60 focus:outline-none focus:bg-black/40 transition-colors"
-                                    onKeyDown={(e) => e.key === 'Enter' && handleReply()}
+                                    onKeyDown={(e) => {
+                                        // Stop propagation to prevent story keyboard navigation
+                                        e.stopPropagation()
+                                        if (e.key === 'Enter') handleReply()
+                                    }}
+                                    onFocus={() => setIsReplyInputFocused(true)}
+                                    onBlur={() => setIsReplyInputFocused(false)}
                                 />
                                 <button
                                     onClick={() => currentStory && addReaction(currentStory.id, '❤️')}

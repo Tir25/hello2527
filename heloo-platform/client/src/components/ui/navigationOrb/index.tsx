@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Plus, MessageCircle, Search, User, Bell, LayoutDashboard } from 'lucide-react'
 import { useKeyboardVisibility } from './useKeyboardVisibility'
@@ -115,7 +116,10 @@ export const NavigationOrb: React.FC = () => {
         return null
     }
 
-    return (
+    const portalTarget = typeof document !== 'undefined' ? document.body : null
+    if (!portalTarget) return null
+
+    return createPortal(
         <>
             {/* Backdrop */}
             <div
@@ -147,6 +151,7 @@ export const NavigationOrb: React.FC = () => {
                             tabIndex={isOpen ? 0 : -1}
                             role="menuitem"
                             aria-label={item.label}
+                            type="button"
                         >
                             <Icon size={20} />
                             <span className="nav-orb-label">{item.label}</span>
@@ -161,11 +166,13 @@ export const NavigationOrb: React.FC = () => {
                     aria-expanded={isOpen}
                     aria-haspopup="menu"
                     aria-label={isOpen ? 'Close navigation' : 'Open navigation'}
+                    type="button"
                 >
                     <Plus size={28} className="nav-orb-icon" />
                 </button>
             </div>
-        </>
+        </>,
+        portalTarget
     )
 }
 

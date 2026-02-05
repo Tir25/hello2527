@@ -51,7 +51,17 @@ export const ChatWindow = () => {
     })
 
     // Relationship management
-    const { isBlocked, relationshipLoading, canChat, checkRelationship, handleRelationshipChange } = useChatRelationship({
+    const {
+        isBlocked,
+        relationshipStatus,
+        relationshipId,
+        isRequester,
+        isBlocker,
+        relationshipLoading,
+        canChat,
+        checkRelationship,
+        handleRelationshipChange
+    } = useChatRelationship({
         selectedUserId: selectedUser?.id,
         currentUserId: user?.id,
         isGroup,
@@ -175,9 +185,26 @@ export const ChatWindow = () => {
 
             <AnimatePresence>{shouldShowTyping && <TypingIndicator userName={typingDisplayName} />}</AnimatePresence>
 
-            {isBlocked ? (
-                <RequestBanner userName={userName} userId={selectedUser.id} relationshipStatus="blocked"
-                    isRequester={false} isBlocker={false} onStatusChange={handleRelationshipChange} />
+            {!canChat && !isGroup ? (
+                <RequestBanner
+                    userName={userName}
+                    userId={selectedUser.id}
+                    relationshipStatus={relationshipStatus}
+                    relationshipId={relationshipId}
+                    isRequester={isRequester}
+                    isBlocker={isBlocker}
+                    onStatusChange={handleRelationshipChange}
+                />
+            ) : isBlocked ? (
+                <RequestBanner
+                    userName={userName}
+                    userId={selectedUser.id}
+                    relationshipStatus="blocked"
+                    relationshipId={relationshipId}
+                    isRequester={isRequester}
+                    isBlocker={isBlocker}
+                    onStatusChange={handleRelationshipChange}
+                />
             ) : canChat ? (
                 <div className="flex-none">
                     <MessageInput onSend={handleSendMessage} disabled={loading}

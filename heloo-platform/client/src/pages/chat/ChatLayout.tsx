@@ -38,12 +38,8 @@ export const ChatLayout = ({ children }: ChatLayoutProps) => {
         {children}
       </main>
 
-      {/* Mobile orb on conversation list (no active chat) */}
-      {!selectedUser && (
-        <div className="md:hidden absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none">
-          <NavigationOrb />
-        </div>
-      )}
+      {/* Navigation orb on conversation list (no active chat) */}
+      {!selectedUser && <NavigationOrb />}
     </div>
   )
 }

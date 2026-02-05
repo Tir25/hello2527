@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, Send, Type, Smile, Clock, MapPin, AtSign, BarChart2, HelpCircle, Hash, Users } from 'lucide-react'
 import { CameraCapture } from './CameraCapture'
 import { useStoryUpload, useStoryEditor } from '@/hooks/stories'
-import { TextEditor, StickerDrawer, FilterBar, ScheduleDrawer, DraggableOverlay, LocationPicker, MentionPicker, PollCreator } from './editor'
+import { TextEditor, StickerDrawer, FilterBar, ScheduleDrawer, DraggableOverlay, LocationPicker, MentionPicker, PollCreator, CountdownPicker, QuestionPicker } from './editor'
 import type { AudienceType } from './editor/AudienceSelector'
 
 interface StoryCreatorProps {
@@ -118,12 +118,12 @@ export const StoryCreator = memo(function StoryCreator({ isOpen, onClose, onSucc
                                     ))}
                                     {editor.stickers.map(s => {
                                         const Icon = STICKER_ICONS[s.type]
-                                        // Parse display text (handle JSON for location stickers)
+                                        // Parse display text (handle JSON for location and countdown stickers)
                                         let displayText = s.data
-                                        if (s.type === 'location') {
+                                        if (s.type === 'location' || s.type === 'countdown') {
                                             try {
                                                 const parsed = JSON.parse(s.data)
-                                                displayText = parsed.name || s.data
+                                                displayText = parsed.name || parsed.title || s.data
                                             } catch {
                                                 displayText = s.data
                                             }
@@ -220,6 +220,8 @@ export const StoryCreator = memo(function StoryCreator({ isOpen, onClose, onSucc
                                 onOpenLocationPicker={() => editor.setIsLocationPickerOpen(true)}
                                 onOpenMentionPicker={() => editor.setIsMentionPickerOpen(true)}
                                 onOpenPollCreator={() => editor.setIsPollCreatorOpen(true)}
+                                onOpenCountdownPicker={() => editor.setIsCountdownPickerOpen(true)}
+                                onOpenQuestionPicker={() => editor.setIsQuestionPickerOpen(true)}
                             />
                             <ScheduleDrawer isOpen={editor.isScheduleDrawerOpen} currentTime={editor.scheduledTime} onClose={() => editor.setIsScheduleDrawerOpen(false)} onConfirm={editor.setScheduledTime} />
 
@@ -255,6 +257,23 @@ export const StoryCreator = memo(function StoryCreator({ isOpen, onClose, onSucc
                                 onSubmit={(question, options) => {
                                     editor.handleAddSticker({ type: 'poll', x: 0, y: 0, data: `${question}|${options.join('|')}` })
                                     editor.setIsPollCreatorOpen(false)
+                                }}
+                            />
+                            <CountdownPicker
+                                isOpen={editor.isCountdownPickerOpen}
+                                onClose={() => editor.setIsCountdownPickerOpen(false)}
+                                onConfirm={(title, endDate) => {
+                                    const data = JSON.stringify({ title, endDate })
+                                    editor.handleAddSticker({ type: 'countdown', x: 0, y: 0, data })
+                                    editor.setIsCountdownPickerOpen(false)
+                                }}
+                            />
+                            <QuestionPicker
+                                isOpen={editor.isQuestionPickerOpen}
+                                onClose={() => editor.setIsQuestionPickerOpen(false)}
+                                onConfirm={(question) => {
+                                    editor.handleAddSticker({ type: 'question', x: 0, y: 0, data: question })
+                                    editor.setIsQuestionPickerOpen(false)
                                 }}
                             />
                         </div>

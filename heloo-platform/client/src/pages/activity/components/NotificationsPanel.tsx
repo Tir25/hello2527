@@ -1,30 +1,33 @@
 /**
  * NotificationsPanel Component
- * 
+ *
  * Displays combined notifications:
  * - People who followed you ("X started following you")
  * - People who accepted your requests ("X accepted your follow request")
- * 
+ * - Story notifications (question responses, mentions)
+ *
  * Mobile-optimized with compact stats and scrollable list
  */
 
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { Bell, Users, UserCheck } from 'lucide-react'
+import { Bell, Users, UserCheck, MessageCircle } from 'lucide-react'
 import GlassCard from '@/components/ui/GlassCard'
-import { useNewFollowers, groupByTime, type TimeSection } from '@/hooks/activity'
+import { useNewFollowers, groupByTime, type TimeSection, useStoryNotifications } from '@/hooks/activity'
 import { useAcceptedRequests } from '@/hooks/activity/useAcceptedRequests'
 import { NewFollowerItem } from './NewFollowerItem'
 import { AcceptedRequestItem } from './AcceptedRequestItem'
+import { StoryNotificationItem } from './StoryNotificationItem'
 import { TimeSectionHeader } from './TimeSectionHeader'
 
 const SECTION_ORDER: TimeSection[] = ['today', 'thisWeek', 'earlier']
 
 interface NotificationItem {
     id: string
-    type: 'follower' | 'accepted'
-    profile: any
+    type: 'follower' | 'accepted' | 'story'
+    profile?: any
+    notification?: any
     timestamp: string
     created_at: string
 }
@@ -33,10 +36,16 @@ export const NotificationsPanel = () => {
     const navigate = useNavigate()
     const { followers, loading: followersLoading } = useNewFollowers()
     const { accepted, loading: acceptedLoading } = useAcceptedRequests()
+    const { notifications: storyNotifs, loading: storyLoading, markAsRead } = useStoryNotifications()
 
     const handleViewProfile = (userId: string, username?: string | null) => {
-        // Use username for clean URLs, fallback to ID
         navigate(`/profile/${username || userId}`)
+    }
+
+    const handleStoryTap = async (_storyId: string, notificationId: string) => {
+        await markAsRead(notificationId)
+        // Could open story viewer here if we have the story data
+        // For now, just mark as read
     }
 
     // Combine and sort all notifications
@@ -57,13 +66,21 @@ export const NotificationsPanel = () => {
             created_at: a.acceptedAt,
         }))
 
-        return [...followerItems, ...acceptedItems].sort(
+        const storyItems: NotificationItem[] = storyNotifs.map(n => ({
+            id: `story-${n.id}`,
+            type: 'story',
+            notification: n,
+            timestamp: n.created_at,
+            created_at: n.created_at,
+        }))
+
+        return [...followerItems, ...acceptedItems, ...storyItems].sort(
             (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         )
-    }, [followers, accepted])
+    }, [followers, accepted, storyNotifs])
 
     const groupedNotifications = groupByTime(allNotifications)
-    const loading = followersLoading || acceptedLoading
+    const loading = followersLoading || acceptedLoading || storyLoading
     const totalCount = allNotifications.length
 
     if (loading) {
@@ -86,7 +103,7 @@ export const NotificationsPanel = () => {
                     </div>
                     <h3 className="text-base sm:text-lg font-semibold text-gray-800">No notifications yet</h3>
                     <p className="text-sm text-gray-500 max-w-xs">
-                        New followers and accepted requests will appear here.
+                        New followers, accepted requests, and story activity will appear here.
                     </p>
                 </div>
             </GlassCard>
@@ -96,7 +113,7 @@ export const NotificationsPanel = () => {
     return (
         <div className="space-y-3">
             {/* Compact Stats Row */}
-            <div className="flex items-center gap-3 px-1 mb-2">
+            <div className="flex items-center gap-3 px-1 mb-2 flex-wrap">
                 <div className="flex items-center gap-1.5">
                     <Users size={14} className="text-purple-500" />
                     <span className="text-[13px] text-gray-600 font-medium">{followers.length} followers</span>
@@ -106,6 +123,15 @@ export const NotificationsPanel = () => {
                     <UserCheck size={14} className="text-green-500" />
                     <span className="text-[13px] text-gray-600 font-medium">{accepted.length} accepted</span>
                 </div>
+                {storyNotifs.length > 0 && (
+                    <>
+                        <div className="w-1 h-1 rounded-full bg-gray-300" />
+                        <div className="flex items-center gap-1.5">
+                            <MessageCircle size={14} className="text-purple-500" />
+                            <span className="text-[13px] text-gray-600 font-medium">{storyNotifs.length} story</span>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Time-grouped notifications */}
@@ -118,23 +144,36 @@ export const NotificationsPanel = () => {
                         <TimeSectionHeader section={section} count={sectionItems.length} />
                         <AnimatePresence mode="popLayout">
                             <div className="space-y-2">
-                                {sectionItems.map((item) => (
-                                    item.type === 'follower' ? (
-                                        <NewFollowerItem
-                                            key={item.id}
-                                            profile={item.profile}
-                                            followedAt={item.timestamp}
-                                            onViewProfile={() => handleViewProfile(item.profile.id, item.profile.username)}
-                                        />
-                                    ) : (
-                                        <AcceptedRequestItem
-                                            key={item.id}
-                                            profile={item.profile}
-                                            acceptedAt={item.timestamp}
-                                            onViewProfile={() => handleViewProfile(item.profile.id, item.profile.username)}
-                                        />
-                                    )
-                                ))}
+                                {sectionItems.map((item) => {
+                                    if (item.type === 'follower') {
+                                        return (
+                                            <NewFollowerItem
+                                                key={item.id}
+                                                profile={item.profile}
+                                                followedAt={item.timestamp}
+                                                onViewProfile={() => handleViewProfile(item.profile.id, item.profile.username)}
+                                            />
+                                        )
+                                    } else if (item.type === 'accepted') {
+                                        return (
+                                            <AcceptedRequestItem
+                                                key={item.id}
+                                                profile={item.profile}
+                                                acceptedAt={item.timestamp}
+                                                onViewProfile={() => handleViewProfile(item.profile.id, item.profile.username)}
+                                            />
+                                        )
+                                    } else if (item.type === 'story' && item.notification) {
+                                        return (
+                                            <StoryNotificationItem
+                                                key={item.id}
+                                                notification={item.notification}
+                                                onTap={(storyId) => handleStoryTap(storyId, item.notification.id)}
+                                            />
+                                        )
+                                    }
+                                    return null
+                                })}
                             </div>
                         </AnimatePresence>
                     </div>

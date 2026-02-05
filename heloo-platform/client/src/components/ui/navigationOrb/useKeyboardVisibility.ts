@@ -18,6 +18,14 @@ export function useKeyboardVisibility(): boolean {
         // Only run on client
         if (typeof window === 'undefined') return
 
+        const hasTouchInput =
+            navigator.maxTouchPoints > 0 ||
+            (window.matchMedia?.('(pointer: coarse)')?.matches ?? false) ||
+            'ontouchstart' in window
+
+        // Skip keyboard detection on non-touch devices (desktop/laptop)
+        if (!hasTouchInput) return
+
         const visualViewport = window.visualViewport
 
         // Fallback for browsers without Visual Viewport API

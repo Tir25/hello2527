@@ -125,7 +125,6 @@
 }
 
 .nav-orb-item:active {
-    transform: scale(0.85) !important;
     background: rgba(99, 102, 241, 0.4);
 }
 

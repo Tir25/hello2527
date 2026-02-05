@@ -9,6 +9,8 @@ import { memo } from 'react'
 import { MapPin, AtSign, HelpCircle, Hash, Clock } from 'lucide-react'
 import type { TextOverlay, Sticker } from '@/types'
 import { PollDisplay } from './PollDisplay'
+import { CountdownDisplay } from './CountdownDisplay'
+import { QuestionDisplay } from './QuestionDisplay'
 
 interface StoryOverlaysProps {
     storyId?: string
@@ -77,6 +79,26 @@ export const StoryOverlays = memo(function StoryOverlays({
                         y={s.y}
                         isOwnStory={isOwnStory}
                         onLoadingChange={onPollLoadingChange}
+                    />
+                ) : s.type === 'countdown' && storyId ? (
+                    <CountdownDisplay
+                        key={s.id}
+                        storyId={storyId}
+                        stickerId={s.id}
+                        data={s.data}
+                        x={s.x}
+                        y={s.y}
+                    />
+                ) : s.type === 'question' && storyId ? (
+                    <QuestionDisplay
+                        key={s.id}
+                        storyId={storyId}
+                        stickerId={s.id}
+                        data={s.data}
+                        x={s.x}
+                        y={s.y}
+                        isOwnStory={isOwnStory}
+                        onInteractionChange={onPollLoadingChange}
                     />
                 ) : (
                     <StickerItem
