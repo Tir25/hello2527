@@ -5,7 +5,7 @@
  * @module components/chat/RequestBanner/types
  */
 
-export type RelationshipStatus = 'pending' | 'blocked' | 'none'
+export type RelationshipStatus = 'pending' | 'blocked' | 'none' | 'accepted'
 
 export interface RequestBannerProps {
     userName: string

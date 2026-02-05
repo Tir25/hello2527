@@ -69,10 +69,10 @@ export const StoryViewer = memo(function StoryViewer() {
             target.tagName === 'INPUT' ||
             target.tagName === 'TEXTAREA' ||
             target.tagName === 'BUTTON' ||
-            target.closest('input, textarea, button, [role="button"]') ||
-            target.closest('[data-story-interactive="true"]')
+            !!target.closest('input, textarea, button, [role="button"]') ||
+            !!target.closest('[data-story-interactive="true"]')
 
-        ignoreNextTapRef.current = isInteractiveElement
+        ignoreNextTapRef.current = !!isInteractiveElement
     }, [])
 
     // Preload adjacent stories
